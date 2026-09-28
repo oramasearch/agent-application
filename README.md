@@ -30,3 +30,9 @@ does the agent commit the files, create or update the App, deploy it, and follow
 Apps default to lake authentication and private source repositories. Zetta and Service credentials
 are delivered through bindings. Dependencies outside app-runtime's baked set select lake's
 in-cluster image mode.
+
+## Verification and evals
+
+`uv run pytest` covers the service, bus, proposal rules, confirmation gate, deployment calls, and
+generated Apps loaded by the pinned app-runtime revision. `uv run application-agent-evals` runs the
+dashboard, Postgres CRUD, and static-site live model cases against deterministic fake lake facts.
