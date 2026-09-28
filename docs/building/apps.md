@@ -24,5 +24,10 @@ capability. It never builds an image itself.
 
 Apps default to `auth: lake`. Public access is valid only when the current request explicitly asks
 for it. Zetta bindings are read-only by default. Service connection data and credentials are read
-through `orama_app` bindings, never copied into code or ordinary environment values.
+through `orama_app` bindings, never copied into code or ordinary environment values. An environment
+credential is represented only by an operator-managed reference such as
+`{"API_KEY":{"secret":"forecast-api-key"}}`.
 
+Customer scope is attached only to lake list and workspace-query capabilities. Reads addressed by
+repository, dataset, or App id retain their exact input schema; the delegated credential still
+enforces the person's policy on every call.

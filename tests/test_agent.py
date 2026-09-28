@@ -3,8 +3,11 @@ from __future__ import annotations
 import base64
 import json
 from types import SimpleNamespace
+from urllib.parse import parse_qs
 
-from agent_application.agent import Turn, answer_turn, proposal_defects
+import httpx
+
+from agent_application.agent import Lake, Turn, answer_turn, proposal_defects
 
 
 def files(
@@ -235,9 +238,30 @@ def test_safety_and_mode_rules_are_enforced() -> None:
     custom = proposal()
     custom["files"] = files(dependencies=["scikit-learn"])
     secret = proposal(app={"env": {"API_TOKEN": "plain-value"}})
+    secret_reference = proposal(
+        app={"env": {"API_TOKEN": {"secret": "forecast-api-token"}}}
+    )
 
     assert any("explicitly" in defect for defect in proposal_defects(public, "build it"))
     assert proposal_defects(public, "make it public") == []
     assert any("image mode" in defect for defect in proposal_defects(custom, "build it"))
     assert any("secret" in defect for defect in proposal_defects(secret, "build it"))
+    assert proposal_defects(secret_reference, "build it") == []
 
+
+def test_lake_adds_customer_only_to_customer_scoped_reads() -> None:
+    queries = []
+
+    def transport(request: httpx.Request) -> httpx.Response:
+        queries.append((request.url.path, parse_qs(request.url.query.decode())))
+        return httpx.Response(200, json={"ok": True, "value": {}})
+
+    lake = Lake(turn(), transport=httpx.MockTransport(transport))
+    try:
+        lake.read("list_apps", {})
+        lake.read("get_app", {"app": "app-1"})
+    finally:
+        lake.close()
+
+    assert queries[0][1]["customer_id"] == ["customer-1"]
+    assert "customer_id" not in queries[1][1]

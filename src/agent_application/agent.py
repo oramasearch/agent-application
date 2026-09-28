@@ -45,6 +45,12 @@ READ_CAPABILITIES = {
     "receive_app_events",
 }
 POST_READS = {"workspace_sql"}
+CUSTOMER_SCOPED_CAPABILITIES = {
+    "list_apps",
+    "list_datasets",
+    "list_services",
+    "workspace_sql",
+}
 SECRET_NAME = re.compile(r"(?:password|passwd|secret|token|api[_-]?key|private[_-]?key)", re.I)
 SECRET_LITERAL = re.compile(
     r"(?:sk-[A-Za-z0-9_-]{16,}|ghp_[A-Za-z0-9]{20,}|"
@@ -101,7 +107,9 @@ class Lake:
         read: bool,
         use_post: bool = False,
     ) -> dict[str, Any]:
-        values = with_customer(arguments, self.turn.customer_id)
+        values = arguments
+        if capability in CUSTOMER_SCOPED_CAPABILITIES:
+            values = with_customer(arguments, self.turn.customer_id)
         try:
             if read and not use_post:
                 params = {
@@ -291,7 +299,12 @@ def app_defects(
         problems.append("app.env must be an object")
     else:
         for name, value in env.items():
-            if SECRET_NAME.search(str(name)) or SECRET_LITERAL.search(str(value)):
+            if SECRET_NAME.search(str(name)):
+                if not secret_reference(value):
+                    problems.append(
+                        f"app.env cannot carry plaintext secret {name}; use a secret reference"
+                    )
+            elif SECRET_LITERAL.search(str(value)):
                 problems.append(f"app.env cannot carry secret value {name}; use a binding")
     bindings = app.get("bindings", {})
     if not isinstance(bindings, dict):
@@ -313,6 +326,13 @@ def app_defects(
     if isinstance(manifest, str):
         problems.extend(manifest_defects(manifest, app))
     return problems
+
+
+def secret_reference(value: Any) -> bool:
+    if not isinstance(value, dict) or set(value) != {"secret"}:
+        return False
+    name = value.get("secret")
+    return isinstance(name, str) and bool(name.strip())
 
 
 def manifest_defects(manifest: str, app: dict[str, Any]) -> list[str]:
