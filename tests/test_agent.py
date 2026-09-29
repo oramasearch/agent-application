@@ -6,8 +6,9 @@ from types import SimpleNamespace
 from urllib.parse import parse_qs
 
 import httpx
+import pytest
 
-from agent_application.agent import Lake, Turn, answer_turn, proposal_defects
+from agent_application.agent import Lake, LakeError, Turn, answer_turn, proposal_defects
 
 
 def files(
@@ -114,6 +115,63 @@ class FakeLake:
         return answers[capability]
 
 
+class RetryLake(FakeLake):
+    def __init__(self, failure: str) -> None:
+        super().__init__()
+        self.failure = failure
+        self.failed = False
+        self.repositories: list[dict] = []
+        self.apps: list[dict] = []
+        self.commits = 0
+
+    def read(self, capability, arguments):
+        self.reads.append((capability, arguments))
+        if capability == "list_repositories":
+            return {"items": list(self.repositories)}
+        if capability == "list_apps":
+            return {"apps": list(self.apps)}
+        if capability == "receive_app_events":
+            return {
+                "events": [
+                    {
+                        "type": "ready",
+                        "status": "ready",
+                        "url": "https://test.apps.example",
+                    }
+                ],
+                "next_sequence": 2,
+            }
+        return {}
+
+    def write(self, capability, arguments):
+        self.writes.append((capability, arguments))
+        if capability == self.failure and not self.failed:
+            self.failed = True
+            raise LakeError(capability, "test_failure", "injected deployment failure")
+        if capability == "create_repository":
+            repository = {
+                "id": "repo-1",
+                "customer_id": arguments["customer_id"],
+                "name": arguments["name"],
+            }
+            self.repositories.append(repository)
+            return repository
+        if capability == "commit_repository_files":
+            self.commits += 1
+            return {"commitOid": f"blake3:revision-{self.commits}"}
+        if capability == "create_app":
+            app = {
+                "id": "app-1",
+                "customer_id": arguments["customer_id"],
+                "name": arguments["name"],
+            }
+            self.apps.append(app)
+            return app
+        if capability == "deploy_app":
+            return {"id": arguments["app"], "status": "deploying"}
+        raise AssertionError(f"unexpected capability {capability}")
+
+
 def turn(message="build an App", context=None):
     return Turn(
         message=message,
@@ -175,6 +233,61 @@ def test_confirmed_proposal_commits_then_creates_and_deploys() -> None:
     operations = lake.writes[1][1]["operations"]
     assert operations[0]["path"] == "apps/test/app.toml"
     assert base64.b64decode(operations[0]["content"]).decode().startswith("name =")
+
+
+def test_retry_after_repository_creation_reuses_repository() -> None:
+    lake = RetryLake("create_app")
+    reviewed = proposal()
+    context = {
+        "confirmed_proposal": {
+            "files": reviewed["files"],
+            "app": reviewed["app"],
+        }
+    }
+
+    with pytest.raises(LakeError, match="create_app: test_failure"):
+        answer_turn(turn("confirmed", context), [], Scripted(), "test-model", lake)
+
+    answer = answer_turn(turn("confirmed", context), [], Scripted(), "test-model", lake)
+
+    assert answer["result"]["kind"] == "deployed"
+    assert [name for name, _ in lake.writes] == [
+        "create_repository",
+        "commit_repository_files",
+        "create_app",
+        "commit_repository_files",
+        "create_app",
+        "deploy_app",
+    ]
+    assert answer["result"]["app"]["repository"]["id"] == "repo-1"
+
+
+def test_retry_after_app_creation_reuses_app_and_deploys_new_revision() -> None:
+    lake = RetryLake("deploy_app")
+    reviewed = proposal()
+    context = {
+        "confirmed_proposal": {
+            "files": reviewed["files"],
+            "app": reviewed["app"],
+        }
+    }
+
+    with pytest.raises(LakeError, match="deploy_app: test_failure"):
+        answer_turn(turn("confirmed", context), [], Scripted(), "test-model", lake)
+
+    answer = answer_turn(turn("confirmed", context), [], Scripted(), "test-model", lake)
+
+    assert answer["result"]["kind"] == "deployed"
+    assert [name for name, _ in lake.writes] == [
+        "create_repository",
+        "commit_repository_files",
+        "create_app",
+        "deploy_app",
+        "commit_repository_files",
+        "deploy_app",
+    ]
+    assert lake.writes[-1][1]["app"] == "app-1"
+    assert lake.writes[-1][1]["source"]["revision"] == "blake3:revision-2"
 
 
 def test_image_mode_uses_lake_build_capability() -> None:
@@ -258,10 +371,12 @@ def test_lake_adds_customer_only_to_customer_scoped_reads() -> None:
 
     lake = Lake(turn(), transport=httpx.MockTransport(transport))
     try:
+        lake.read("list_repositories", {})
         lake.read("list_apps", {})
         lake.read("get_app", {"app": "app-1"})
     finally:
         lake.close()
 
     assert queries[0][1]["customer_id"] == ["customer-1"]
-    assert "customer_id" not in queries[1][1]
+    assert queries[1][1]["customer_id"] == ["customer-1"]
+    assert "customer_id" not in queries[2][1]
