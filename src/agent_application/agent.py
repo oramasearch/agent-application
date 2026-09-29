@@ -39,6 +39,7 @@ READ_CAPABILITIES = {
     "list_services",
     "repository_tree",
     "repository_file",
+    "list_repositories",
     "list_apps",
     "get_app",
     "app_logs",
@@ -48,6 +49,7 @@ POST_READS = {"workspace_sql"}
 CUSTOMER_SCOPED_CAPABILITIES = {
     "list_apps",
     "list_datasets",
+    "list_repositories",
     "list_services",
     "workspace_sql",
 }
@@ -613,6 +615,21 @@ def ensure_repository(turn: Turn, app: dict[str, Any], lake: Lake) -> dict[str, 
     repository = dict(app["repository"])
     if repository.get("id"):
         return repository
+    existing = matching_customer_item(
+        lake.read("list_repositories", {"limit": 1_000}),
+        "items",
+        str(repository["name"]),
+        turn.customer_id,
+    )
+    if existing:
+        repository_id = existing.get("id") or existing.get("repository_id")
+        if not repository_id:
+            raise LakeError(
+                "list_repositories",
+                "invalid_response",
+                "matching repository id is missing",
+            )
+        return {**existing, **repository, "id": repository_id}
     created = lake.write(
         "create_repository",
         {
@@ -626,6 +643,23 @@ def ensure_repository(turn: Turn, app: dict[str, Any], lake: Lake) -> dict[str, 
     if not repository_id:
         raise LakeError("create_repository", "invalid_response", "repository id is missing")
     return {**repository, **created, "id": repository_id, "visibility": "private"}
+
+
+def matching_customer_item(
+    value: dict[str, Any],
+    key: str,
+    name: str,
+    customer_id: str,
+) -> dict[str, Any] | None:
+    items = value.get(key)
+    if not isinstance(items, list):
+        return None
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        if item.get("name") == name and item.get("customer_id") == customer_id:
+            return item
+    return None
 
 
 def commit_files(
@@ -668,6 +702,21 @@ def create_or_update_app(
         "revision": revision,
     }
     app_id = app.get("id")
+    if not app_id:
+        existing = matching_customer_item(
+            lake.read("list_apps", {}),
+            "apps",
+            str(app["name"]),
+            turn.customer_id,
+        )
+        if existing:
+            app_id = existing.get("id") or existing.get("app_id")
+            if not app_id:
+                raise LakeError(
+                    "list_apps",
+                    "invalid_response",
+                    "matching App id is missing",
+                )
     if not app_id:
         created = lake.write(
             "create_app",

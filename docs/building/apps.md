@@ -18,6 +18,12 @@ validates it again, creates a private repository when needed, commits the files,
 the App, deploys the immutable revision, and follows lifecycle events. Existing Apps keep their id
 and receive a new revision. A failed rollout is explained with its event and `app_logs` detail.
 
+Confirmation retries are idempotent within a customer. Before creating a repository or App, the
+agent lists that customer's rows and reuses an exact name match. It commits the confirmed files as
+a new immutable revision, then `deploy_app` updates the existing App's source and desired
+generation. This lets the same confirmed proposal resume after `create_repository`, `create_app`,
+or deployment failed without creating duplicate rows.
+
 Runtime mode accepts only app-runtime's baked dependencies. A required package outside that set
 causes an image-mode proposal; after confirmation the agent calls lake's in-cluster `build_app`
 capability. It never builds an image itself.
