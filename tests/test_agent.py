@@ -399,3 +399,21 @@ def test_follow_rollout_names_the_customer_and_app() -> None:
     assert arguments["customer_id"] == "customer-1"
     assert arguments["app_id"] == "app-1"
     assert "app" not in arguments
+
+
+def test_workspace_sql_is_sent_as_get() -> None:
+    requests = []
+
+    def transport(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json={"ok": True, "value": {}})
+
+    lake = Lake(turn(), transport=httpx.MockTransport(transport))
+    try:
+        lake.read("workspace_sql", {"statement": "SELECT 1"})
+    finally:
+        lake.close()
+
+    # Lake answers a POST read with 405 method_not_allowed.
+    assert requests[0].method == "GET"
+    assert parse_qs(requests[0].url.query.decode())["statement"] == ["SELECT 1"]
