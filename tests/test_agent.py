@@ -373,10 +373,29 @@ def test_lake_adds_customer_only_to_customer_scoped_reads() -> None:
     try:
         lake.read("list_repositories", {})
         lake.read("list_apps", {})
-        lake.read("get_app", {"app": "app-1"})
+        lake.read("get_app", {"app_id": "app-1"})
+        lake.read("receive_app_events", {"app_id": "app-1"})
+        lake.read("repository_tree", {"id": "repo-1"})
     finally:
         lake.close()
 
     assert queries[0][1]["customer_id"] == ["customer-1"]
     assert queries[1][1]["customer_id"] == ["customer-1"]
-    assert "customer_id" not in queries[2][1]
+    # Lake resolves app reads through the owning customer, so they need it too.
+    assert queries[2][1]["customer_id"] == ["customer-1"]
+    assert queries[3][1]["customer_id"] == ["customer-1"]
+    assert "customer_id" not in queries[4][1]
+
+
+def test_follow_rollout_names_the_customer_and_app() -> None:
+    from agent_application.agent import follow_rollout
+
+    lake = FakeLake()
+    result = follow_rollout("customer-1", {"id": "app-1"}, lake)
+
+    assert result["status"] == "ready"
+    capability, arguments = lake.reads[0]
+    assert capability == "receive_app_events"
+    assert arguments["customer_id"] == "customer-1"
+    assert arguments["app_id"] == "app-1"
+    assert "app" not in arguments
