@@ -45,7 +45,8 @@ READ_CAPABILITIES = {
     "app_logs",
     "receive_app_events",
 }
-POST_READS = {"workspace_sql"}
+# Lake proxies every workspace read as GET and answers POST with 405 method_not_allowed.
+POST_READS: set[str] = set()
 CUSTOMER_SCOPED_CAPABILITIES = {
     "app_logs",
     "get_app",
