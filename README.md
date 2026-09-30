@@ -28,6 +28,9 @@ writes. A follow-up turn must carry the reviewed object in `context.confirmed_pr
 does the agent commit the files, create or update the App, deploy it, and follow its rollout.
 Retries reuse a repository or App with the proposal's exact name in the same customer, so a
 failure after either row is created can resume from the reviewed proposal.
+Every customer-owned read (repositories, datasets, services, and the App reads `get_app`,
+`app_logs` and `receive_app_events`) carries the turn's `customer_id`; App reads name the App by
+`app_id`.
 
 Apps default to lake authentication and private source repositories. Zetta and Service credentials
 are delivered through bindings. Dependencies outside app-runtime's baked set select lake's

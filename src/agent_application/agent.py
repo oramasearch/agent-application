@@ -47,10 +47,13 @@ READ_CAPABILITIES = {
 }
 POST_READS = {"workspace_sql"}
 CUSTOMER_SCOPED_CAPABILITIES = {
+    "app_logs",
+    "get_app",
     "list_apps",
     "list_datasets",
     "list_repositories",
     "list_services",
+    "receive_app_events",
     "workspace_sql",
 }
 SECRET_NAME = re.compile(r"(?:password|passwd|secret|token|api[_-]?key|private[_-]?key)", re.I)
@@ -576,7 +579,7 @@ def deploy_confirmed(turn: Turn, confirmed: dict[str, Any], lake: Lake) -> dict[
     repository = ensure_repository(turn, app, lake)
     revision = commit_files(repository, app, files, lake)
     deployed = create_or_update_app(turn, app, repository, revision, lake)
-    rollout = follow_rollout(deployed, lake)
+    rollout = follow_rollout(turn.customer_id, deployed, lake)
     final_app = {
         **app,
         **deployed,
@@ -754,7 +757,7 @@ def create_or_update_app(
     return {**created, **deployed, "id": app_id, "source": source}
 
 
-def follow_rollout(app: dict[str, Any], lake: Lake) -> dict[str, Any]:
+def follow_rollout(customer_id: str, app: dict[str, Any], lake: Lake) -> dict[str, Any]:
     app_id = str(app["id"])
     sequence = 1
     latest: dict[str, Any] = {}
@@ -762,7 +765,12 @@ def follow_rollout(app: dict[str, Any], lake: Lake) -> dict[str, Any]:
         try:
             value = lake.read(
                 "receive_app_events",
-                {"app": app_id, "from_sequence": sequence, "wait_ms": 5_000},
+                {
+                    "customer_id": customer_id,
+                    "app_id": app_id,
+                    "from_sequence": sequence,
+                    "wait_ms": 5_000,
+                },
             )
         except LakeError as error:
             if error.code in {"unknown_capability", "not_found"}:
@@ -782,7 +790,7 @@ def follow_rollout(app: dict[str, Any], lake: Lake) -> dict[str, Any]:
     if latest:
         return latest
     try:
-        observed = lake.read("get_app", {"app": app_id})
+        observed = lake.read("get_app", {"customer_id": customer_id, "app_id": app_id})
     except LakeError:
         observed = {}
     return observed or {"status": str(app.get("status") or "submitted")}
