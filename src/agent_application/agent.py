@@ -21,6 +21,8 @@ MAX_MODEL_ROUNDS = 10
 MAX_REPAIRS = 2
 MAX_FILES = 40
 MAX_SOURCE_BYTES = 900 * 1024
+MAX_BUILD_POLLS = 12
+MAX_BUILD_LOG_LINES = 20
 BAKED_DEPENDENCIES = {
     "fastapi",
     "httpx",
@@ -43,18 +45,24 @@ READ_CAPABILITIES = {
     "list_apps",
     "get_app",
     "app_logs",
+    "build_logs",
+    "get_build",
     "receive_app_events",
+    "receive_build_events",
 }
 # Lake proxies every workspace read as GET and answers POST with 405 method_not_allowed.
 POST_READS: set[str] = set()
 CUSTOMER_SCOPED_CAPABILITIES = {
     "app_logs",
+    "build_logs",
     "get_app",
+    "get_build",
     "list_apps",
     "list_datasets",
     "list_repositories",
     "list_services",
     "receive_app_events",
+    "receive_build_events",
     "workspace_sql",
 }
 SECRET_NAME = re.compile(r"(?:password|passwd|secret|token|api[_-]?key|private[_-]?key)", re.I)
@@ -63,6 +71,7 @@ SECRET_LITERAL = re.compile(
     r"(?:password|passwd|secret|token|api[_-]?key)\s*[=:]\s*['\"][^'\"]{6,}['\"])",
     re.I,
 )
+DEPENDENCY_CREDENTIAL = re.compile(r"[a-z][a-z0-9+.-]*://[^/\s]+@", re.I)
 PUBLIC_REQUEST = re.compile(
     r"\b(public|publicly|anyone|anonymous|without (?:sign[- ]?in|auth))\b",
     re.I,
@@ -85,6 +94,13 @@ class LakeError(Exception):
         self.capability = capability
         self.code = code
         self.message = message
+
+
+@dataclass
+class AppDeployment:
+    app: dict[str, Any]
+    build: dict[str, Any] | None = None
+    failure: str | None = None
 
 
 class Lake:
@@ -358,6 +374,9 @@ def manifest_defects(manifest: str, app: dict[str, Any]) -> list[str]:
     if port != app.get("port", 8080):
         problems.append("app.toml port must match app.port")
     dependencies = values.get("dependencies", [])
+    requirements = dependency_requirements(dependencies)
+    if any(DEPENDENCY_CREDENTIAL.search(requirement) for requirement in requirements):
+        problems.append("app.toml dependencies cannot contain credentials")
     names = dependency_names(dependencies)
     outside = sorted(names - BAKED_DEPENDENCIES)
     if outside and app.get("mode", "runtime") != "image":
@@ -384,6 +403,51 @@ def dependency_names(value: Any) -> set[str]:
             if name:
                 names.add(name.lower().replace("_", "-"))
     return names
+
+
+def dependency_requirements(value: Any) -> list[str]:
+    if isinstance(value, list):
+        return [item for item in value if isinstance(item, str)]
+    if not isinstance(value, dict):
+        return []
+    requirements = []
+    for name, version in value.items():
+        requirement = str(name)
+        if isinstance(version, str) and version not in {"", "*"}:
+            if version[0] in "<>=!~[":
+                requirement += version
+            else:
+                requirement += f"=={version}"
+        requirements.append(requirement)
+    return requirements
+
+
+def manifest_dependencies(files: list[dict[str, Any]]) -> list[str]:
+    manifest = next(
+        (
+            item.get("contents")
+            for item in files
+            if item.get("path") == "app.toml"
+        ),
+        "",
+    )
+    if not isinstance(manifest, str):
+        return []
+    try:
+        dependencies = tomllib.loads(manifest).get("dependencies", [])
+    except tomllib.TOMLDecodeError:
+        return []
+    return dependency_requirements(dependencies)
+
+
+def external_dependencies(files: list[dict[str, Any]]) -> list[str]:
+    requirements = manifest_dependencies(files)
+    outside = []
+    for requirement in requirements:
+        names = dependency_names([requirement])
+        if names and names.isdisjoint(BAKED_DEPENDENCIES):
+            outside.append(requirement)
+    return outside
 
 
 def normalize_manifest_bindings(value: Any) -> tuple[bool, tuple[str, ...]]:
@@ -579,7 +643,25 @@ def deploy_confirmed(turn: Turn, confirmed: dict[str, Any], lake: Lake) -> dict[
     app = with_safe_defaults(app)
     repository = ensure_repository(turn, app, lake)
     revision = commit_files(repository, app, files, lake)
-    deployed = create_or_update_app(turn, app, repository, revision, lake)
+    deployment = create_or_update_app(turn, app, repository, revision, files, lake)
+    if deployment.failure:
+        final_app = {
+            **app,
+            **deployment.app,
+            "repository": repository,
+            "revision": revision,
+            "build": deployment.build or {},
+        }
+        return {
+            "reply": deployment.failure,
+            "result": {
+                "kind": "question",
+                "files": files,
+                "app": final_app,
+                "confirm": False,
+            },
+        }
+    deployed = deployment.app
     rollout = follow_rollout(turn.customer_id, deployed, lake)
     final_app = {
         **app,
@@ -698,13 +780,19 @@ def create_or_update_app(
     app: dict[str, Any],
     repository: dict[str, Any],
     revision: str,
+    files: list[dict[str, Any]],
     lake: Lake,
-) -> dict[str, Any]:
+) -> AppDeployment:
     source = {
         "repository": repository["id"],
         "path": app["path"],
         "revision": revision,
     }
+    dependencies = external_dependencies(files)
+    environment = dict(app["env"])
+    environment.pop("APP_DEPS", None)
+    if dependencies:
+        environment["APP_DEPS"] = " ".join(dependencies)
     app_id = app.get("id")
     if not app_id:
         existing = matching_customer_item(
@@ -727,14 +815,14 @@ def create_or_update_app(
             {
                 "customer_id": turn.customer_id,
                 "name": app["name"],
-                "mode": app["mode"],
+                "mode": "runtime",
                 "source": source,
                 "framework": app["framework"],
                 "port": app["port"],
                 "host": app.get("host"),
                 "auth": app["auth"],
                 "bindings": app["bindings"],
-                "env": app["env"],
+                "env": environment,
             },
         )
         app_id = created.get("id") or created.get("app_id")
@@ -742,20 +830,125 @@ def create_or_update_app(
             raise LakeError("create_app", "invalid_response", "App id is missing")
     else:
         created = dict(app)
-    if app["mode"] == "image":
-        lake.write(
+    build = None
+    deployment = {"source": source}
+    if dependencies:
+        queued = lake.write(
             "build_app",
             {"customer_id": turn.customer_id, "app": app_id},
         )
+        build_id = queued.get("build_id") or queued.get("id")
+        if not build_id:
+            raise LakeError("build_app", "invalid_response", "build id is missing")
+        build = wait_for_build(turn.customer_id, str(build_id), lake)
+        build = {**queued, **build, "id": str(build_id)}
+        if build_status(build) != "succeeded":
+            failure = build_failure_explanation(turn.customer_id, build, lake)
+            pending = {**created, "id": app_id, "source": source}
+            return AppDeployment(app=pending, build=build, failure=failure)
+        image = build_image_reference(build)
+        if not image:
+            raise LakeError(
+                "get_build",
+                "invalid_response",
+                "succeeded build image reference is missing",
+            )
+        deployment = {"image": image}
     deployed = lake.write(
         "deploy_app",
         {
             "customer_id": turn.customer_id,
             "app": app_id,
-            "source": source,
+            **deployment,
         },
     )
-    return {**created, **deployed, "id": app_id, "source": source}
+    result = {**created, **deployed, "id": app_id, "source": source}
+    if build:
+        result["build"] = build
+        result["image"] = deployment["image"]
+    return AppDeployment(app=result, build=build)
+
+
+def wait_for_build(customer_id: str, build_id: str, lake: Lake) -> dict[str, Any]:
+    sequence = 1
+    latest: dict[str, Any] = {}
+    for _attempt in range(MAX_BUILD_POLLS):
+        events = lake.read(
+            "receive_build_events",
+            {
+                "customer_id": customer_id,
+                "build_id": build_id,
+                "from_sequence": sequence,
+                "wait_ms": 5_000,
+            },
+        )
+        sequence = int(events.get("next_sequence") or sequence)
+        values = events.get("events") or []
+        event = next(
+            (value for value in reversed(values) if isinstance(value, dict)),
+            {},
+        )
+        observed = lake.read(
+            "get_build",
+            {"customer_id": customer_id, "build_id": build_id},
+        )
+        latest = {**observed, **event}
+        if build_status(latest) in {"succeeded", "failed"}:
+            return latest
+    return {**latest, "timed_out": True}
+
+
+def build_status(build: dict[str, Any]) -> str:
+    values = (build.get("phase"), build.get("status"), build.get("type"))
+    normalized = {str(value).strip().lower() for value in values if value}
+    if normalized & {"failed", "error", "cancelled", "canceled"}:
+        return "failed"
+    if normalized & {"succeeded", "success", "done", "complete", "completed"}:
+        return "succeeded"
+    return "pending"
+
+
+def build_image_reference(build: dict[str, Any]) -> str:
+    image = build.get("image") or build.get("image_reference")
+    if image:
+        return str(image)
+    target = str(build.get("target") or "")
+    digest = str(build.get("digest") or "")
+    if target and digest:
+        return f"{target}@{digest}"
+    return target
+
+
+def build_failure_explanation(
+    customer_id: str,
+    build: dict[str, Any],
+    lake: Lake,
+) -> str:
+    build_id = str(build["id"])
+    phase = str(build.get("phase") or build.get("status") or "did not complete")
+    message = str(build.get("message") or "").strip()
+    try:
+        logs = lake.read(
+            "build_logs",
+            {"customer_id": customer_id, "build_id": build_id},
+        )
+    except LakeError as error:
+        logs = {"lines": [], "error": error.message}
+    lines = [str(line) for line in logs.get("lines", [])]
+    detail = f"Build {build_id} failed in phase {phase}."
+    if build.get("timed_out"):
+        detail = f"Build {build_id} did not reach a terminal phase; last phase was {phase}."
+    if message:
+        detail += f" {message}"
+    if lines:
+        detail += "\nLast build log lines:\n" + "\n".join(
+            lines[-MAX_BUILD_LOG_LINES:]
+        )
+    elif logs.get("error"):
+        detail += f" Build logs were unavailable: {logs['error']}"
+    else:
+        detail += " No build log lines were reported."
+    return detail
 
 
 def follow_rollout(customer_id: str, app: dict[str, Any], lake: Lake) -> dict[str, Any]:

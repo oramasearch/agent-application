@@ -90,6 +90,18 @@ class FakeLake:
 
     def read(self, capability, arguments):
         self.reads.append((capability, arguments))
+        if capability == "receive_build_events":
+            return {
+                "events": [{"type": "done", "phase": "done"}],
+                "next_sequence": 2,
+            }
+        if capability == "get_build":
+            return {
+                "id": "build-1",
+                "phase": "Succeeded",
+                "target": "registry.test/customer/test-app:build-1",
+                "digest": "sha256:abc123",
+            }
         if capability == "receive_app_events":
             return {
                 "events": [
@@ -113,6 +125,25 @@ class FakeLake:
             "deploy_app": {"id": "app-1", "status": "deploying"},
         }
         return answers[capability]
+
+
+class FailedBuildLake(FakeLake):
+    def read(self, capability, arguments):
+        self.reads.append((capability, arguments))
+        if capability == "receive_build_events":
+            return {
+                "events": [{"type": "error", "message": "pip install failed"}],
+                "next_sequence": 3,
+            }
+        if capability == "get_build":
+            return {
+                "id": "build-1",
+                "phase": "Failed",
+                "message": "builder exited with status 1",
+            }
+        if capability == "build_logs":
+            return {"lines": ["Collecting package", "No matching distribution found"]}
+        return super().read(capability, arguments)
 
 
 class RetryLake(FakeLake):
@@ -293,7 +324,80 @@ def test_retry_after_app_creation_reuses_app_and_deploys_new_revision() -> None:
 def test_image_mode_uses_lake_build_capability() -> None:
     lake = FakeLake()
     reviewed = proposal(app={"mode": "image"})
-    reviewed["files"] = files(dependencies=["scikit-learn"])
+    reviewed["files"] = files(dependencies=["fastapi", "psycopg[binary]>=3.2"])
+    context = {
+        "confirmed_proposal": {
+            "files": reviewed["files"],
+            "app": reviewed["app"],
+        }
+    }
+
+    answer = answer_turn(turn("confirmed", context), [], Scripted(), "test-model", lake)
+
+    assert answer["result"]["kind"] == "deployed"
+    assert [name for name, _ in lake.writes] == [
+        "create_repository",
+        "commit_repository_files",
+        "create_app",
+        "build_app",
+        "deploy_app",
+    ]
+    create_app = lake.writes[2][1]
+    assert create_app["mode"] == "runtime"
+    assert create_app["source"]["revision"] == "blake3:revision"
+    assert create_app["env"]["APP_DEPS"] == "psycopg[binary]>=3.2"
+    assert (
+        "receive_build_events",
+        {
+            "customer_id": "customer-1",
+            "build_id": "build-1",
+            "from_sequence": 1,
+            "wait_ms": 5_000,
+        },
+    ) in lake.reads
+    assert (
+        "get_build",
+        {
+            "customer_id": "customer-1",
+            "build_id": "build-1",
+        },
+    ) in lake.reads
+    deploy_app = lake.writes[4][1]
+    assert deploy_app["image"] == (
+        "registry.test/customer/test-app:build-1@sha256:abc123"
+    )
+    assert "source" not in deploy_app
+
+
+def test_failed_image_build_returns_log_tail_without_deploying() -> None:
+    lake = FailedBuildLake()
+    reviewed = proposal(app={"mode": "image"})
+    reviewed["files"] = files(dependencies=["fastapi", "psycopg[binary]"])
+    context = {
+        "confirmed_proposal": {
+            "files": reviewed["files"],
+            "app": reviewed["app"],
+        }
+    }
+
+    answer = answer_turn(turn("confirmed", context), [], Scripted(), "test-model", lake)
+
+    assert answer["result"]["kind"] == "question"
+    assert answer["result"]["confirm"] is False
+    assert answer["result"]["app"]["build"]["id"] == "build-1"
+    assert "Build build-1 failed" in answer["reply"]
+    assert "No matching distribution found" in answer["reply"]
+    assert [name for name, _ in lake.writes] == [
+        "create_repository",
+        "commit_repository_files",
+        "create_app",
+        "build_app",
+    ]
+
+
+def test_baked_only_image_proposal_skips_build() -> None:
+    lake = FakeLake()
+    reviewed = proposal(app={"mode": "image", "env": {"APP_DEPS": "unsafe"}})
     context = {
         "confirmed_proposal": {
             "files": reviewed["files"],
@@ -303,7 +407,16 @@ def test_image_mode_uses_lake_build_capability() -> None:
 
     answer_turn(turn("confirmed", context), [], Scripted(), "test-model", lake)
 
-    assert [name for name, _ in lake.writes][-2:] == ["build_app", "deploy_app"]
+    assert [name for name, _ in lake.writes] == [
+        "create_repository",
+        "commit_repository_files",
+        "create_app",
+        "deploy_app",
+    ]
+    create_app = lake.writes[2][1]
+    assert create_app["mode"] == "runtime"
+    assert "APP_DEPS" not in create_app["env"]
+    assert "source" in lake.writes[3][1]
 
 
 def test_existing_app_gets_a_new_revision_without_create() -> None:
@@ -354,12 +467,20 @@ def test_safety_and_mode_rules_are_enforced() -> None:
     secret_reference = proposal(
         app={"env": {"API_TOKEN": {"secret": "forecast-api-token"}}}
     )
+    dependency_credential = proposal(app={"mode": "image"})
+    dependency_credential["files"] = files(
+        dependencies=["package @ https://person:credential@example.test/package.whl"]
+    )
 
     assert any("explicitly" in defect for defect in proposal_defects(public, "build it"))
     assert proposal_defects(public, "make it public") == []
     assert any("image mode" in defect for defect in proposal_defects(custom, "build it"))
     assert any("secret" in defect for defect in proposal_defects(secret, "build it"))
     assert proposal_defects(secret_reference, "build it") == []
+    assert any(
+        "dependencies cannot contain credentials" in defect
+        for defect in proposal_defects(dependency_credential, "build it")
+    )
 
 
 def test_lake_adds_customer_only_to_customer_scoped_reads() -> None:
@@ -375,6 +496,9 @@ def test_lake_adds_customer_only_to_customer_scoped_reads() -> None:
         lake.read("list_apps", {})
         lake.read("get_app", {"app_id": "app-1"})
         lake.read("receive_app_events", {"app_id": "app-1"})
+        lake.read("get_build", {"build_id": "build-1"})
+        lake.read("receive_build_events", {"build_id": "build-1"})
+        lake.read("build_logs", {"build_id": "build-1"})
         lake.read("repository_tree", {"id": "repo-1"})
     finally:
         lake.close()
@@ -384,7 +508,10 @@ def test_lake_adds_customer_only_to_customer_scoped_reads() -> None:
     # Lake resolves app reads through the owning customer, so they need it too.
     assert queries[2][1]["customer_id"] == ["customer-1"]
     assert queries[3][1]["customer_id"] == ["customer-1"]
-    assert "customer_id" not in queries[4][1]
+    assert queries[4][1]["customer_id"] == ["customer-1"]
+    assert queries[5][1]["customer_id"] == ["customer-1"]
+    assert queries[6][1]["customer_id"] == ["customer-1"]
+    assert "customer_id" not in queries[7][1]
 
 
 def test_follow_rollout_names_the_customer_and_app() -> None:
