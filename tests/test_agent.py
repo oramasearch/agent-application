@@ -564,3 +564,12 @@ def test_build_wait_stops_at_its_deadline(monkeypatch) -> None:
     result = agent_module.wait_for_build("customer-1", "build-1", Building())
     assert result["timed_out"] is True
     assert result["phase"] == "building"
+
+
+def test_rollout_state_reads_string_and_object_statuses() -> None:
+    from agent_application.agent import rollout_state
+
+    assert rollout_state({"status": "Ready"}) == "ready"
+    assert rollout_state({"status": {"phase": "Degraded", "message": "crash-looping"}}) == "degraded"
+    assert rollout_state({"phase": "Failed"}) == "failed"
+    assert rollout_state({}) == ""
