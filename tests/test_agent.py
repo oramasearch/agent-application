@@ -344,6 +344,8 @@ def test_image_mode_uses_lake_build_capability() -> None:
     ]
     create_app = lake.writes[2][1]
     assert create_app["mode"] == "runtime"
+    build_app = lake.writes[3][1]
+    assert build_app["source"] == create_app["source"]
     assert create_app["source"]["revision"] == "blake3:revision"
     assert create_app["env"]["APP_DEPS"] == "psycopg[binary]>=3.2"
     assert (

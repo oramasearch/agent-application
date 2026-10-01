@@ -836,9 +836,10 @@ def create_or_update_app(
     build = None
     deployment = {"source": source}
     if dependencies:
+        # Name the source: an App already running a built image has no stored source in lake.
         queued = lake.write(
             "build_app",
-            {"customer_id": turn.customer_id, "app": app_id},
+            {"customer_id": turn.customer_id, "app": app_id, "source": source},
         )
         build_id = queued.get("build_id") or queued.get("id")
         if not build_id:
