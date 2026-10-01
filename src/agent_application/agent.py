@@ -21,7 +21,10 @@ MAX_MODEL_ROUNDS = 10
 MAX_REPAIRS = 2
 MAX_FILES = 40
 MAX_SOURCE_BYTES = 900 * 1024
-MAX_BUILD_POLLS = 12
+# A cold image build (pip install into app-runtime) can take minutes; each read below is task
+# activity, which keeps lake's claim lease alive.
+BUILD_DEADLINE_SECONDS = 15 * 60
+BUILD_WAIT_MS = 20_000
 MAX_BUILD_LOG_LINES = 20
 BAKED_DEPENDENCIES = {
     "fastapi",
@@ -872,14 +875,15 @@ def create_or_update_app(
 def wait_for_build(customer_id: str, build_id: str, lake: Lake) -> dict[str, Any]:
     sequence = 1
     latest: dict[str, Any] = {}
-    for _attempt in range(MAX_BUILD_POLLS):
+    deadline = time.monotonic() + BUILD_DEADLINE_SECONDS
+    while time.monotonic() < deadline:
         events = lake.read(
             "receive_build_events",
             {
                 "customer_id": customer_id,
                 "build_id": build_id,
                 "from_sequence": sequence,
-                "wait_ms": 5_000,
+                "wait_ms": BUILD_WAIT_MS,
             },
         )
         sequence = int(events.get("next_sequence") or sequence)

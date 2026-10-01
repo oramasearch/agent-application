@@ -352,7 +352,7 @@ def test_image_mode_uses_lake_build_capability() -> None:
             "customer_id": "customer-1",
             "build_id": "build-1",
             "from_sequence": 1,
-            "wait_ms": 5_000,
+            "wait_ms": 20_000,
         },
     ) in lake.reads
     assert (
@@ -544,3 +544,23 @@ def test_workspace_sql_is_sent_as_get() -> None:
     # Lake answers a POST read with 405 method_not_allowed.
     assert requests[0].method == "GET"
     assert parse_qs(requests[0].url.query.decode())["statement"] == ["SELECT 1"]
+
+
+def test_build_wait_stops_at_its_deadline(monkeypatch) -> None:
+    import agent_application.agent as agent_module
+
+    clock = iter([0.0, 0.0, 400.0, 1000.0])
+    monkeypatch.setattr(agent_module.time, "monotonic", lambda: next(clock))
+
+    class Building(FakeLake):
+        def read(self, capability, arguments):
+            self.reads.append((capability, arguments))
+            if capability == "receive_build_events":
+                return {"events": [{"phase": "building"}], "next_sequence": 2}
+            if capability == "get_build":
+                return {"id": "build-1", "phase": "building"}
+            return super().read(capability, arguments)
+
+    result = agent_module.wait_for_build("customer-1", "build-1", Building())
+    assert result["timed_out"] is True
+    assert result["phase"] == "building"
