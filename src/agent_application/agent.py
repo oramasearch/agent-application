@@ -673,7 +673,7 @@ def deploy_confirmed(turn: Turn, confirmed: dict[str, Any], lake: Lake) -> dict[
         "revision": revision,
         "rollout": rollout,
     }
-    failed = rollout.get("status") in {"failed", "error"}
+    failed = rollout_state(rollout) in {"failed", "error", "degraded", "crashloopbackoff"}
     if failed:
         explanation = failure_explanation(final_app, rollout, lake)
         return {
@@ -994,13 +994,24 @@ def follow_rollout(customer_id: str, app: dict[str, Any], lake: Lake) -> dict[st
     return observed or {"status": str(app.get("status") or "submitted")}
 
 
+def rollout_state(rollout: dict[str, Any]) -> str:
+    """The rollout's state as text; lake reports it as a string or as a status object."""
+    for key in ("status", "phase", "type"):
+        value = rollout.get(key)
+        if isinstance(value, dict):
+            value = value.get("phase") or value.get("state") or value.get("status")
+        if isinstance(value, str) and value.strip():
+            return value.strip().lower()
+    return ""
+
+
 def failure_explanation(
     app: dict[str, Any],
     rollout: dict[str, Any],
     lake: Lake,
 ) -> str:
     try:
-        logs = lake.read("app_logs", {"app": app["id"], "limit": 100})
+        logs = lake.read("app_logs", {"app_id": app["id"], "limit": 100})
     except LakeError as error:
         logs = {"error": error.message}
     detail = rollout.get("message") or rollout.get("reason") or logs.get("error")
