@@ -22,11 +22,27 @@ Confirmation retries are idempotent within a customer. Before creating a reposit
 agent lists that customer's rows and reuses an exact name match. It commits the confirmed files as
 a new immutable revision, then `deploy_app` updates the existing App's source and desired
 generation. This lets the same confirmed proposal resume after `create_repository`, `create_app`,
-or deployment failed without creating duplicate rows.
+or deployment failed without creating duplicate rows. Lake may return an existing build for the
+same source revision, and the agent observes that build instead of depending on a new build.
 
 Runtime mode accepts only app-runtime's baked dependencies. A required package outside that set
-causes an image-mode proposal; after confirmation the agent calls lake's in-cluster `build_app`
-capability. It never builds an image itself.
+causes an image-mode proposal so the person can review that an image build is required. Confirmation
+uses this build chain:
+
+1. Create the lake App in `runtime` mode with its source repository, path, and exact revision.
+2. Derive `APP_DEPS` from the manifest requirements outside the baked set and attach the
+   space-separated value to the App environment. A proposal-supplied `APP_DEPS` is discarded, and
+   credentials remain prohibited in source, manifests, and environment values.
+3. Call `build_app`, then long-poll `receive_build_events` and read `get_build` with the
+   customer and build IDs until the build reaches a terminal phase.
+4. On success, pass the build's immutable target and digest to `deploy_app` as `image`, then
+   follow the normal App rollout.
+5. On failure, return a question naming the build and the last `build_logs` lines. The agent does
+   not call `deploy_app`.
+
+An App whose manifest uses only baked dependencies is created and deployed from source without an
+image build, even if an older reviewed proposal labels it as image mode. The agent never builds an
+image on the host.
 
 Apps default to `auth: lake`. Public access is valid only when the current request explicitly asks
 for it. Zetta bindings are read-only by default. Service connection data and credentials are read
@@ -34,6 +50,6 @@ through `orama_app` bindings, never copied into code or ordinary environment val
 credential is represented only by an operator-managed reference such as
 `{"API_KEY":{"secret":"forecast-api-key"}}`.
 
-Customer scope is attached only to lake list and workspace-query capabilities. Reads addressed by
-repository, dataset, or App id retain their exact input schema; the delegated credential still
-enforces the person's policy on every call.
+Customer scope is attached to lake list, workspace-query, App, and build reads. Build reads are
+GET requests and name the build with `build_id`; App reads name the App with `app_id`. The
+delegated credential still enforces the person's policy on every call.

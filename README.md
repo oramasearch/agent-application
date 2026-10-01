@@ -9,7 +9,9 @@ Private. Its image is published **private** as `oramasearch/agent-application` o
 The Python service exposes `POST /v1/turn` and `GET /healthz` on port 8080. It can also receive
 `agent_turn` tasks of kind `app` from lake's agent bus with `AGENT_BUS_TOKEN` and
 `AGENT_BUS_AGENT`. Every app deployment remains subject to an explicit confirmation carried on a
-follow-up turn.
+follow-up turn. A confirmed proposal that needs packages outside app-runtime's baked set is first
+stored as a source-backed runtime App, built by lake, and deployed from the resulting immutable
+image reference.
 
 Development uses Python 3.12 and uv:
 
@@ -28,13 +30,15 @@ writes. A follow-up turn must carry the reviewed object in `context.confirmed_pr
 does the agent commit the files, create or update the App, deploy it, and follow its rollout.
 Retries reuse a repository or App with the proposal's exact name in the same customer, so a
 failure after either row is created can resume from the reviewed proposal.
-Every customer-owned read (repositories, datasets, services, and the App reads `get_app`,
-`app_logs` and `receive_app_events`) carries the turn's `customer_id`; App reads name the App by
-`app_id`.
+Every customer-owned read (repositories, datasets, services, App state, and image-build state)
+carries the turn's `customer_id`. Build progress is read with `receive_build_events` and
+`get_build`; build failures include the tail from `build_logs`.
 
 Apps default to lake authentication and private source repositories. Zetta and Service credentials
-are delivered through bindings. Dependencies outside app-runtime's baked set select lake's
-in-cluster image mode.
+are delivered through bindings. Dependencies outside app-runtime's baked set remain an image-mode
+signal in the reviewed proposal. On confirmation, the agent creates a runtime App with the source
+revision and a derived, non-secret `APP_DEPS`, asks lake to build it, waits for a terminal build
+phase, and deploys the built image. Baked-only Apps skip the image build.
 
 ## Verification and evals
 
