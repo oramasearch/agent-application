@@ -28,6 +28,9 @@ An initial turn reads the person's lake metadata as needed, validates generated 
 source, and returns `result.kind: proposal` with `confirm: true`. It performs no repository or App
 writes. A follow-up turn must carry the reviewed object in `context.confirmed_proposal`; only then
 does the agent commit the files, create or update the App, deploy it, and follow its rollout.
+The follow waits up to three minutes for Ready: a starting pod's Degraded or failed probe is not
+judged, only a state that is still there at the deadline (re-read with `get_app`). When the App
+logs are unavailable the reply says so and never gives that as the reason it failed (#16).
 Retries reuse a repository or App with the proposal's exact name in the same customer, so a
 failure after either row is created can resume from the reviewed proposal.
 Every customer-owned read (repositories, datasets, services, App state, and image-build state)

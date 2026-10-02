@@ -25,6 +25,12 @@ MAX_SOURCE_BYTES = 900 * 1024
 # activity, which keeps lake's claim lease alive.
 BUILD_DEADLINE_SECONDS = 15 * 60
 BUILD_WAIT_MS = 20_000
+# How long a confirmed turn follows a rollout to Ready before judging it (agent-application#16).
+# A new pod reports Degraded or a failed probe while it starts; only a state that persists to the
+# deadline is a failure.
+ROLLOUT_DEADLINE_SECONDS = 3 * 60
+ROLLOUT_READY = {"ready", "deployed", "succeeded", "running"}
+ROLLOUT_FAILED = {"failed", "error", "degraded", "crashloopbackoff"}
 MAX_BUILD_LOG_LINES = 20
 BAKED_DEPENDENCIES = {
     "fastapi",
@@ -673,7 +679,7 @@ def deploy_confirmed(turn: Turn, confirmed: dict[str, Any], lake: Lake) -> dict[
         "revision": revision,
         "rollout": rollout,
     }
-    failed = rollout_state(rollout) in {"failed", "error", "degraded", "crashloopbackoff"}
+    failed = rollout_state(rollout) in ROLLOUT_FAILED or rollout.get("timed_out")
     if failed:
         explanation = failure_explanation(final_app, rollout, lake)
         return {
@@ -957,42 +963,66 @@ def build_failure_explanation(
 
 
 def follow_rollout(customer_id: str, app: dict[str, Any], lake: Lake) -> dict[str, Any]:
+    """Follow the rollout until Ready, or until the deadline (agent-application#16).
+
+    A starting pod passes through states that look like failure (Degraded, a failed probe); judging
+    the first one told people their App failed moments before it became Ready. Ready ends the wait
+    at once; anything else is only the answer if it is still the state at the deadline, confirmed by
+    a fresh `get_app`.
+    """
     app_id = str(app["id"])
+    deadline = time.monotonic() + ROLLOUT_DEADLINE_SECONDS
     sequence = 1
     latest: dict[str, Any] = {}
-    for _attempt in range(6):
-        try:
-            value = lake.read(
-                "receive_app_events",
-                {
-                    "customer_id": customer_id,
-                    "app_id": app_id,
-                    "from_sequence": sequence,
-                    "wait_ms": 5_000,
-                },
-            )
-        except LakeError as error:
-            if error.code in {"unknown_capability", "not_found"}:
-                break
-            raise
-        sequence = int(value.get("next_sequence") or sequence)
-        events = value.get("events") or []
-        for event in events:
-            if isinstance(event, dict):
-                latest = event
-                status = str(event.get("status") or event.get("type") or "").lower()
-                if status in {"ready", "deployed", "succeeded", "failed", "error"}:
-                    return {**event, "status": status}
-        if not events:
-            break
-        time.sleep(0.01)
-    if latest:
-        return latest
+    events_available = True
+    while time.monotonic() < deadline:
+        if events_available:
+            try:
+                value = lake.read(
+                    "receive_app_events",
+                    {
+                        "customer_id": customer_id,
+                        "app_id": app_id,
+                        "from_sequence": sequence,
+                        "wait_ms": 5_000,
+                    },
+                )
+            except LakeError as error:
+                if error.code not in {"unknown_capability", "not_found"}:
+                    raise
+                events_available = False
+                continue
+            sequence = int(value.get("next_sequence") or sequence)
+            for event in value.get("events") or []:
+                if isinstance(event, dict):
+                    status = str(event.get("status") or event.get("type") or "").lower()
+                    latest = {**event, "status": status} if status else event
+                    if status in ROLLOUT_READY:
+                        return latest
+            if value.get("events"):
+                continue
+        observed = observe_app(customer_id, app_id, lake)
+        if rollout_state(observed) in ROLLOUT_READY:
+            return observed
+        if observed:
+            latest = observed
+        time.sleep(2)
+    final = observe_app(customer_id, app_id, lake)
+    if final:
+        latest = final
+    if not latest:
+        latest = {"status": str(app.get("status") or "submitted")}
+    if rollout_state(latest) not in ROLLOUT_READY | ROLLOUT_FAILED:
+        latest = {**latest, "timed_out": True}
+    return latest
+
+
+def observe_app(customer_id: str, app_id: str, lake: Lake) -> dict[str, Any]:
     try:
         observed = lake.read("get_app", {"customer_id": customer_id, "app_id": app_id})
     except LakeError:
-        observed = {}
-    return observed or {"status": str(app.get("status") or "submitted")}
+        return {}
+    return observed if isinstance(observed, dict) else {}
 
 
 def rollout_state(rollout: dict[str, Any]) -> str:
@@ -1011,12 +1041,21 @@ def failure_explanation(
     rollout: dict[str, Any],
     lake: Lake,
 ) -> str:
+    """Why the rollout failed. Missing logs are said as such, never given as the reason."""
+    if rollout.get("timed_out"):
+        return (
+            "The App was deployed but did not report Ready within "
+            f"{ROLLOUT_DEADLINE_SECONDS // 60} minutes; its last state was "
+            f"{rollout_state(rollout) or 'unknown'}. Check it on the App page."
+        )
+    detail = rollout.get("message") or rollout.get("reason")
+    logs_note = ""
     try:
         logs = lake.read("app_logs", {"app_id": app["id"], "limit": 100})
     except LakeError as error:
-        logs = {"error": error.message}
-    detail = rollout.get("message") or rollout.get("reason") or logs.get("error")
+        logs = {}
+        logs_note = f" Its logs are unavailable here ({error.message})."
     if not detail:
-        entries = logs.get("logs") or logs.get("entries") or []
+        entries = logs.get("logs") or logs.get("entries") or logs.get("lines") or []
         detail = entries[-1] if entries else "No failure detail was reported."
-    return f"The rollout failed: {detail}"
+    return f"The rollout failed: {detail}{logs_note}"
