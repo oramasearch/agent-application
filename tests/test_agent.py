@@ -575,3 +575,63 @@ def test_rollout_state_reads_string_and_object_statuses() -> None:
     assert rollout_state({"status": {"phase": "Degraded", "message": "crash-looping"}}) == "degraded"
     assert rollout_state({"phase": "Failed"}) == "failed"
     assert rollout_state({}) == ""
+
+
+def test_a_rollout_that_starts_degraded_is_followed_to_ready(monkeypatch) -> None:
+    # agent-application#16: a starting pod reports Degraded before Ready; that is not a failure.
+    import agent_application.agent as agent_module
+
+    monkeypatch.setattr(agent_module.time, "sleep", lambda _seconds: None)
+
+    class Starting(FakeLake):
+        def read(self, capability, arguments):
+            self.reads.append((capability, arguments))
+            if capability == "receive_app_events":
+                if arguments["from_sequence"] == 1:
+                    return {"events": [{"status": "degraded", "message": "probe failed"}],
+                            "next_sequence": 2}
+                return {"events": [{"status": "ready", "url": "https://app.example"}],
+                        "next_sequence": 3}
+            return super().read(capability, arguments)
+
+    result = agent_module.follow_rollout("customer-1", {"id": "app-1"}, Starting())
+    assert result["status"] == "ready"
+
+
+def test_a_rollout_still_failing_at_the_deadline_is_a_failure(monkeypatch) -> None:
+    import agent_application.agent as agent_module
+
+    clock = iter([0.0, 0.0, 10.0, 500.0, 500.0, 500.0])
+    monkeypatch.setattr(agent_module.time, "monotonic", lambda: next(clock))
+    monkeypatch.setattr(agent_module.time, "sleep", lambda _seconds: None)
+
+    class Crashing(FakeLake):
+        def read(self, capability, arguments):
+            self.reads.append((capability, arguments))
+            if capability == "receive_app_events":
+                return {"events": [], "next_sequence": 2}
+            if capability == "get_app":
+                return {"id": "app-1", "status": {"phase": "Degraded", "message": "crash-looping"}}
+            return super().read(capability, arguments)
+
+    result = agent_module.follow_rollout("customer-1", {"id": "app-1"}, Crashing())
+    assert agent_module.rollout_state(result) == "degraded"
+
+
+def test_missing_logs_are_named_and_never_given_as_the_reason() -> None:
+    from agent_application.agent import failure_explanation
+    from agent_application.agent import LakeError
+
+    class NoLogs(FakeLake):
+        def read(self, capability, arguments):
+            if capability == "app_logs":
+                raise LakeError("app_logs", "unavailable", "app logs are not configured")
+            return super().read(capability, arguments)
+
+    reply = failure_explanation({"id": "app-1"}, {"status": "failed"}, NoLogs())
+    assert reply.startswith("The rollout failed: No failure detail was reported.")
+    assert "logs are unavailable here (app logs are not configured)" in reply
+
+    timed_out = failure_explanation({"id": "app-1"}, {"status": "pending", "timed_out": True}, NoLogs())
+    assert "did not report Ready within 3 minutes" in timed_out
+    assert "failed" not in timed_out
