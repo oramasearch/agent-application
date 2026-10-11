@@ -14,6 +14,7 @@ from typing import Any, Protocol
 from openai import OpenAI
 
 from agent_application import lake_bus
+from agent_application.model import gateway_client
 
 PROMPT_VERSION = "v1"
 
@@ -69,10 +70,12 @@ def run_turn(
         conversation_id=conversation_id,
         context=body.get("context") if isinstance(body.get("context"), dict) else {},
     )
+    # The model is reached through lake with the turn's own key, which counts its tokens in the
+    # turn's workspace (lake#248); this agent holds no provider key.
     answer = answer_turn(
         turn,
         state.history(conversation_id),
-        client or OpenAI(),
+        client or gateway_client(lake_url, token),
         state.model,
         lake,
     )
