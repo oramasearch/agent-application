@@ -13,6 +13,11 @@ follow-up turn. A confirmed proposal that needs packages outside app-runtime's b
 stored as a source-backed runtime App, built by lake, and deployed from the resulting immutable
 image reference.
 
+**The model is reached through lake** (lake#248, lake `docs/api/model-gateway.md`): every call goes
+to `<lake_url>/openai/v1` with the turn's own `lake_token` as the API key (`model.py`), so lake
+counts its tokens in the turn's workspace and enforces the account's model-token limit. The service
+holds no `OPENAI_API_KEY`; only the offline evals, which run for no workspace, call OpenAI directly.
+
 Development uses Python 3.12 and uv:
 
 ```console
