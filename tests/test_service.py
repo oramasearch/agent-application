@@ -83,3 +83,15 @@ def test_turn_calls_its_model_through_lakes_gateway_with_the_turns_key(tmp_path,
     assert answer["ok"] and answer["reply"] == "Ready."
     assert [str(request.url) for request in seen] == ["http://lake:8080/openai/v1/chat/completions"]
     assert seen[0].headers["authorization"] == "Bearer lat.task.secret"
+
+
+def test_healthz_reports_the_release_version() -> None:
+    import importlib.metadata
+
+    from agent_application.service import PROMPT_VERSION, health
+
+    body = health(State())
+
+    assert body["ok"]
+    assert body["version"] == importlib.metadata.version("agent-application")
+    assert body["prompt_version"] == PROMPT_VERSION
