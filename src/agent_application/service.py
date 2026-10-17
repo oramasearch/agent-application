@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.metadata
 import json
 import os
 import threading
@@ -17,6 +18,19 @@ from agent_application import lake_bus
 from agent_application.model import gateway_client
 
 PROMPT_VERSION = "v1"
+# The release this service is, read from the installed package (pyproject.toml's version).
+VERSION = importlib.metadata.version("agent-application")
+
+
+def health(state: State) -> dict[str, Any]:
+    """What `GET /healthz` answers."""
+    return {
+        "ok": True,
+        "agent": "agent-application",
+        "version": VERSION,
+        "model": state.model,
+        "prompt_version": PROMPT_VERSION,
+    }
 
 
 class TurnRunner(Protocol):
@@ -115,15 +129,7 @@ def serve() -> int:
 
         def do_GET(self) -> None:  # noqa: N802
             if self.path == "/healthz":
-                self._send(
-                    200,
-                    {
-                        "ok": True,
-                        "agent": "agent-application",
-                        "model": state.model,
-                        "prompt_version": PROMPT_VERSION,
-                    },
-                )
+                self._send(200, health(state))
                 return
             self._send(404, {"ok": False, "error": "not found"})
 

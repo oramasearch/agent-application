@@ -4,11 +4,14 @@ The ApplicationAgent: builds web apps and data apps from a description, commits 
 
 Private. Its image is published **private** as `oramasearch/agent-application` on Docker Hub.
 
+Current release: [v0.1.0](docs/releases/v0.1.0.md) ([all releases](docs/releases/README.md)).
+
 ## Service
 
-The Python service exposes `POST /v1/turn` and `GET /healthz` on port 8080. It can also receive
-`agent_turn` tasks of kind `app` from lake's agent bus with `AGENT_BUS_TOKEN` and
-`AGENT_BUS_AGENT`. Every app deployment remains subject to an explicit confirmation carried on a
+The Python service exposes `POST /v1/turn` and `GET /healthz` (which reports the `version`) on port
+8080. It can also receive `agent_turn` tasks (lake gives them kind `app`) from lake's agent bus when
+`LAKE_URL` and `AGENT_BUS_TOKEN` are set; `AGENT_BUS_AGENT` names the agent and defaults to
+`agent-application`. Every app deployment remains subject to an explicit confirmation carried on a
 follow-up turn. A confirmed proposal that needs packages outside app-runtime's baked set is first
 stored as a source-backed runtime App, built by lake, and deployed from the resulting immutable
 image reference.
@@ -25,7 +28,7 @@ uv sync
 uv run pytest
 ```
 
-See the [documentation index](docs/README.md) for the service contract and application workflow.
+See the [documentation index](docs/README.md) for the service contract, application workflow and releases.
 
 ## Build and confirmation contract
 
