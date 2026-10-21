@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Protocol
+from urllib.parse import urlsplit
 
 from openai import OpenAI
 
@@ -20,6 +21,22 @@ from agent_application.model import gateway_client
 PROMPT_VERSION = "v1"
 # The release this service is, read from the installed package (pyproject.toml's version).
 VERSION = importlib.metadata.version("agent-application")
+
+
+def lakes_url(configured: str) -> str | None:
+    """Lake's address from this service's `LAKE_URL`, the only place a turn's credential is ever
+    sent, or None when it is unset or not an absolute http(s) URL without user info, query or
+    fragment."""
+    url = configured.strip().rstrip("/")
+    try:
+        parts = urlsplit(url)
+        parts.port
+    except ValueError:
+        return None
+    if (parts.scheme.lower() not in ("http", "https") or not parts.hostname
+            or "@" in parts.netloc or parts.query or parts.fragment):
+        return None
+    return url
 
 
 def health(state: State) -> dict[str, Any]:
@@ -67,11 +84,20 @@ def run_turn(
 ) -> dict[str, Any]:
     message = str(body.get("message") or "")
     token = str(body.get("lake_token") or "")
-    lake_url = str(body.get("lake_url") or state.lake_url)
-    if not message or not token or not lake_url:
+    # The turn's credential goes only to Lake at this service's own LAKE_URL; a turn's
+    # `lake_url` is ignored, so the bearer cannot be sent to a host the caller names
+    # (agent-application#30).
+    lake_url = lakes_url(state.lake_url)
+    if lake_url is None:
         return {
             "ok": False,
-            "error": "a turn needs a message, the person's lake_token and lake URL",
+            "error": "LAKE_URL is not set: this agent sends a turn's credential only to "
+                     "Lake's configured address",
+        }
+    if not message or not token:
+        return {
+            "ok": False,
+            "error": "a turn needs a message and the person's lake_token",
         }
     from agent_application.agent import Turn, answer_turn
 

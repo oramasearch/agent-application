@@ -17,9 +17,14 @@ stored as a source-backed runtime App, built by lake, and deployed from the resu
 image reference.
 
 **The model is reached through lake** (lake#248, lake `docs/api/model-gateway.md`): every call goes
-to `<lake_url>/openai/v1` with the turn's own `lake_token` as the API key (`model.py`), so lake
+to `<LAKE_URL>/openai/v1` with the turn's own `lake_token` as the API key (`model.py`), so lake
 counts its tokens in the turn's workspace and enforces the account's model-token limit. The service
 holds no `OPENAI_API_KEY`; only the offline evals, which run for no workspace, call OpenAI directly.
+
+**A turn's credential goes only to Lake at this service's own `LAKE_URL`** (#30). Lake capabilities
+and the model gateway are always reached at `LAKE_URL`; a turn's `lake_url` is ignored, so the
+bearer is never sent to a host the caller names. With `LAKE_URL` unset, or not an absolute
+http(s) URL without user info, query or fragment, every turn is refused before a request is made.
 
 Development uses Python 3.12 and uv:
 
