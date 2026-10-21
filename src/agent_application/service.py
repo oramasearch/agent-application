@@ -38,6 +38,20 @@ def lakes_url(configured: str) -> str | None:
     return url
 
 
+DEFAULT_MODEL = "gpt-5.5"
+
+
+def model_from_env() -> str:
+    """The model: `APPLICATION_AGENT_MODEL` when set, else the Lake's `AGENT_MODEL`, else the default.
+
+    The operator sets `AGENT_MODEL` on every library agent pod from the Lake's `spec.agents.model`
+    (agent-application#22); `APPLICATION_AGENT_MODEL` stays as this agent's own override.
+    """
+    return (os.environ.get("APPLICATION_AGENT_MODEL")
+            or os.environ.get("AGENT_MODEL")
+            or DEFAULT_MODEL)
+
+
 def health(state: State) -> dict[str, Any]:
     """What `GET /healthz` answers."""
     return {
@@ -61,7 +75,7 @@ class TurnRunner(Protocol):
 
 class State:
     def __init__(self) -> None:
-        self.model = os.environ.get("APPLICATION_AGENT_MODEL", "gpt-5.5")
+        self.model = model_from_env()
         self.token = os.environ.get("AGENT_SERVICE_TOKEN", "")
         self.lake_url = os.environ.get("LAKE_URL", "")
         self.lock = threading.Lock()
