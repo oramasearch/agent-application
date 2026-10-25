@@ -99,3 +99,26 @@ def test_healthz_reports_the_release_version() -> None:
     assert body["ok"]
     assert body["version"] == importlib.metadata.version("agent-application")
     assert body["prompt_version"] == PROMPT_VERSION
+
+
+def test_the_lakes_agent_model_reaches_the_agent(monkeypatch) -> None:
+    # The operator sets AGENT_MODEL on every library agent pod from the Lake's spec.agents.model.
+    monkeypatch.delenv("APPLICATION_AGENT_MODEL", raising=False)
+    monkeypatch.setenv("AGENT_MODEL", "gpt-lake-choice")
+
+    assert State().model == "gpt-lake-choice"
+
+
+def test_application_agent_model_overrides_the_lakes_model(monkeypatch) -> None:
+    monkeypatch.setenv("AGENT_MODEL", "gpt-lake-choice")
+    monkeypatch.setenv("APPLICATION_AGENT_MODEL", "gpt-override")
+
+    assert State().model == "gpt-override"
+
+
+def test_the_model_defaults_when_neither_is_set(monkeypatch) -> None:
+    # An empty value counts as unset.
+    monkeypatch.delenv("AGENT_MODEL", raising=False)
+    monkeypatch.setenv("APPLICATION_AGENT_MODEL", "")
+
+    assert State().model == "gpt-5.5"

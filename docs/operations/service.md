@@ -13,7 +13,11 @@ The worker long-polls `receive_agent_tasks`, claims each task once, and publishe
 by a result or failure. The bus credential is used only for those three bus capabilities. The
 person's delegated credential remains inside the claimed task body.
 
-`APPLICATION_AGENT_MODEL` selects the model.
+The model is `APPLICATION_AGENT_MODEL` when it is set, else `AGENT_MODEL`, else `gpt-5.5`. The Orama
+operator sets `AGENT_MODEL` on every library agent pod from the Lake's `spec.agents.model`, so the
+Lake's model choice reaches this agent; `APPLICATION_AGENT_MODEL` is this agent's own override
+([agent-application#22](https://github.com/oramasearch/agent-application/issues/22)). `/healthz`
+reports the model in use.
 
 A turn keeps nothing on the pod's disk (agent-application#21). The pod serves every workspace, and
 a turn's message and answer, including the generated App source, are that workspace's content,

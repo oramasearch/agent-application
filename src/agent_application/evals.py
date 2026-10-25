@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 import sys
 from dataclasses import dataclass
 from datetime import date
@@ -13,6 +12,7 @@ from typing import Any
 from openai import OpenAI
 
 from agent_application.agent import Turn, answer_turn, proposal_defects
+from agent_application.service import model_from_env
 
 
 @dataclass(frozen=True)
@@ -144,7 +144,7 @@ def grade(case: Case, answer: dict[str, Any]) -> list[str]:
 
 def run() -> list[dict[str, Any]]:
     client = OpenAI()
-    model = os.environ.get("APPLICATION_AGENT_MODEL", "gpt-5.5")
+    model = model_from_env()
     rows = []
     for case in CASES:
         lake = FakeLake()
