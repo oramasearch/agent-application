@@ -60,6 +60,16 @@ signal in the reviewed proposal. On confirmation, the agent creates a runtime Ap
 revision and a derived, non-secret `APP_DEPS`, asks lake to build it, waits for a terminal build
 phase, and deploys the built image. Baked-only Apps skip the image build.
 
+## Repairing and changing an App
+
+Lake also starts `repair` turns (an App failed) and `change` turns (more instructions for an App)
+on an existing App named by `context.app_id` (lake#1207). The agent reads the App's events,
+runtime logs, newest build, source and bindings, and proposes the change as a diff of the files it
+changes. Confirmed, it commits them to the App's repository in one commit (each write a drip),
+rebuilds when new packages need an image, redeploys and follows the rollout. An auto-fix turn,
+which lake grants only when the person opted in and attempts remain, applies its own fix. See
+[docs/building/repair.md](docs/building/repair.md).
+
 ## Verification and evals
 
 `uv run pytest` covers the service, bus, proposal rules, confirmation gate, deployment calls, and

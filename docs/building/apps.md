@@ -66,3 +66,6 @@ never asks for a secret's value.
 Customer scope is attached to lake list, workspace-query, App, and build reads. Build reads are
 GET requests and name the build with `build_id`; App reads name the App with `app_id`. The
 delegated credential still enforces the person's policy on every call.
+
+An App that already exists is repaired or changed by `repair` and `change` turns, which propose a
+diff and, confirmed, commit and redeploy it: [repair.md](repair.md).

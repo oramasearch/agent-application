@@ -119,6 +119,7 @@ def run_turn(
         customer_id=str(body.get("customer_id") or ""),
         conversation_id=conversation_id,
         context=body.get("context") if isinstance(body.get("context"), dict) else {},
+        kind=str(body.get("kind") or "app"),
     )
     # The model is reached through lake with the turn's own key, which counts its tokens in the
     # turn's workspace (lake#248); this agent holds no provider key.
