@@ -7,9 +7,7 @@ import json
 import os
 import threading
 import uuid
-from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from pathlib import Path
 from typing import Any, Protocol
 
 from openai import OpenAI
@@ -48,9 +46,6 @@ class State:
         self.model = os.environ.get("APPLICATION_AGENT_MODEL", "gpt-5.5")
         self.token = os.environ.get("AGENT_SERVICE_TOKEN", "")
         self.lake_url = os.environ.get("LAKE_URL", "")
-        self.trace_dir = Path(
-            os.environ.get("TRACE_DIR", "/tmp/agent-application-traces")
-        )
         self.lock = threading.Lock()
         self.conversations: dict[str, list[dict[str, Any]]] = {}
 
@@ -93,20 +88,10 @@ def run_turn(
         state.model,
         lake,
     )
+    # The trace id names the turn; lake stores it with the answer in the turn's workspace Zetta.
+    # Nothing is written to the pod's disk: the pod serves every tenant, and the message and the
+    # answer (with the generated App source) are workspace content (agent-application#21).
     trace_id = str(uuid.uuid4())
-    state.trace_dir.mkdir(parents=True, exist_ok=True)
-    trace = {
-        "trace_id": trace_id,
-        "agent": "agent-application",
-        "prompt_version": PROMPT_VERSION,
-        "at": datetime.now(timezone.utc).isoformat(),
-        "conversation_id": conversation_id,
-        "message": message,
-        "answer": answer,
-    }
-    (state.trace_dir / f"{trace_id}.json").write_text(
-        json.dumps(trace, indent=1, default=str)
-    )
     return {
         "ok": True,
         "conversation_id": conversation_id,
