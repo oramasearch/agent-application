@@ -24,3 +24,9 @@ turn's workspace Zetta (lake `docs/api/agent-bus.md`). `TRACE_DIR` is no longer 
 The image runs as UID 10001, exposes port 8080, and is private as
 `oramasearch/agent-application`. The repository and image must remain private.
 
+
+A turn's credential goes only to Lake at this service's own `LAKE_URL` (agent-application#30): Lake
+capabilities and the model gateway are always reached there, and a `lake_url` in the turn is
+ignored, so the bearer is never sent to a host the caller names. With `LAKE_URL` unset, or not an
+absolute http(s) URL without user info, query or fragment, every turn is refused before any request
+goes out.
