@@ -2,8 +2,9 @@
 
 ApplicationAgent serves `POST /v1/turn` and `GET /healthz` on `PORT`, which defaults to `8080`.
 `/healthz` answers `ok`, the agent name, the release `version`, the model and the prompt version.
-Set `AGENT_SERVICE_TOKEN` to require a bearer token on direct turn requests. Each turn also carries
-the signed-in person's `lake_token`, `lake_url`, and optional `customer_id`; the agent uses that
+`AGENT_SERVICE_TOKEN` is required as the bearer on direct turn requests, compared in constant time
+(`401` otherwise). The route fails closed: with it unset or empty every turn is refused with `503`.
+Each turn also carries the signed-in person's `lake_token`, `lake_url`, and optional `customer_id`; the agent uses that
 credential only for the duration of the turn.
 
 The lake agent bus is enabled when `LAKE_URL` and `AGENT_BUS_TOKEN` are set; `AGENT_BUS_AGENT`
