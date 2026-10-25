@@ -46,7 +46,10 @@ carries the turn's `customer_id`. Build progress is read with `receive_build_eve
 `get_build`; build failures include the tail from `build_logs`.
 
 Apps default to lake authentication and private source repositories. Zetta and Service credentials
-are delivered through bindings. Dependencies outside app-runtime's baked set remain an image-mode
+are delivered through bindings. A secret environment value is a lake secret reference
+(`lake-secret://<mount id>/<name>#<field>`), proposed only when the person names an existing secret;
+otherwise the agent leaves it out and the person sets it on the App's Environment settings
+([docs/building/apps.md](docs/building/apps.md)). Dependencies outside app-runtime's baked set remain an image-mode
 signal in the reviewed proposal. On confirmation, the agent creates a runtime App with the source
 revision and a derived, non-secret `APP_DEPS`, asks lake to build it, waits for a terminal build
 phase, and deploys the built image. Baked-only Apps skip the image build.
