@@ -467,7 +467,7 @@ def test_safety_and_mode_rules_are_enforced() -> None:
     custom["files"] = files(dependencies=["scikit-learn"])
     secret = proposal(app={"env": {"API_TOKEN": "plain-value"}})
     secret_reference = proposal(
-        app={"env": {"API_TOKEN": {"secret": "forecast-api-token"}}}
+        app={"env": {"API_TOKEN": {"secret": "lake-secret://mnt-1/forecast/api#token"}}}
     )
     dependency_credential = proposal(app={"mode": "image"})
     dependency_credential["files"] = files(
@@ -635,3 +635,53 @@ def test_missing_logs_are_named_and_never_given_as_the_reason() -> None:
     timed_out = failure_explanation({"id": "app-1"}, {"status": "pending", "timed_out": True}, NoLogs())
     assert "did not report Ready within 3 minutes" in timed_out
     assert "failed" not in timed_out
+
+
+def test_a_secret_environment_value_is_a_lake_secret_reference() -> None:
+    """agent-application#19, lake#625: lake's create_app takes a lake secret reference and refuses
+    a Kubernetes Secret name, so the agent proposes only the forms lake accepts."""
+    def defects(value):
+        return proposal_defects(proposal(app={"env": {"API_KEY": value}}), "build it")
+
+    accepted = [
+        {"secret": {"mount_id": "mnt-1", "name": "forecast-api-key", "field": "value"}},
+        {"secret": "lake-secret://mnt-1/forecast-api-key#value"},
+        # The name may hold `/` and `#`; the field follows the last `#`.
+        {"secret": "lake-secret://mnt-1/team/forecast#2#api.key"},
+    ]
+    for value in accepted:
+        assert defects(value) == [], value
+
+    refused = [
+        {"secret": "forecast-api-key"},  # a Kubernetes Secret name
+        {"secret": "db-credentials/password"},  # a Kubernetes Secret and key
+        {"secret": "lake-secret://mnt-1/forecast-api-key"},  # no field
+        {"secret": "lake-secret:///forecast-api-key#value"},  # no mount
+        {"secret": "lake-secret://mnt-1/#value"},  # no name
+        {"secret": "lake-secret://mnt-1/forecast#bad field"},  # not a Kubernetes Secret key
+        {"secret": {"mount_id": "mnt-1", "name": "forecast-api-key"}},  # no field
+        {"secret": {"mount_id": "", "name": "forecast-api-key", "field": "value"}},
+        {"secret": {"mount_id": "mnt-1", "name": "k", "field": "value", "version": 2}},
+        {"secret": "lake-secret://mnt-1/k#value", "value": "x"},
+        "plain-value",
+    ]
+    for value in refused:
+        problems = defects(value)
+        assert any("lake secret reference" in problem for problem in problems), (value, problems)
+        assert any("Environment settings" in problem for problem in problems), (value, problems)
+
+    # A variable whose name does not look secret is still held to the rule when it names a secret.
+    kubernetes_name = proposal(app={"env": {"FORECAST_URL": {"secret": "forecast-url"}}})
+    assert any("lake secret reference" in problem
+               for problem in proposal_defects(kubernetes_name, "build it"))
+
+
+def test_the_prompt_proposes_lake_secret_references_and_never_asks_for_a_value() -> None:
+    from agent_application.agent import PROMPTS
+
+    prompt = " ".join((PROMPTS / "v1.md").read_text().split())
+    assert "lake-secret://<mount id>/<name>#<field>" in prompt
+    assert '"mount_id"' in prompt
+    assert "Environment settings" in prompt
+    assert "Never ask for a secret's value" in prompt
+    assert '{"secret": "forecast-api-key"}' not in prompt

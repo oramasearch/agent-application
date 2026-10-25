@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
+import hmac
 import importlib.metadata
 import json
 import os
 import threading
 import uuid
-from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from pathlib import Path
 from typing import Any, Protocol
+from urllib.parse import urlsplit
 
 from openai import OpenAI
 
@@ -20,6 +20,36 @@ from agent_application.model import gateway_client
 PROMPT_VERSION = "v1"
 # The release this service is, read from the installed package (pyproject.toml's version).
 VERSION = importlib.metadata.version("agent-application")
+
+
+def lakes_url(configured: str) -> str | None:
+    """Lake's address from this service's `LAKE_URL`, the only place a turn's credential is ever
+    sent, or None when it is unset or not an absolute http(s) URL without user info, query or
+    fragment."""
+    url = configured.strip().rstrip("/")
+    try:
+        parts = urlsplit(url)
+        parts.port
+    except ValueError:
+        return None
+    if (parts.scheme.lower() not in ("http", "https") or not parts.hostname
+            or "@" in parts.netloc or parts.query or parts.fragment):
+        return None
+    return url
+
+
+DEFAULT_MODEL = "gpt-5.5"
+
+
+def model_from_env() -> str:
+    """The model: `APPLICATION_AGENT_MODEL` when set, else the Lake's `AGENT_MODEL`, else the default.
+
+    The operator sets `AGENT_MODEL` on every library agent pod from the Lake's `spec.agents.model`
+    (agent-application#22); `APPLICATION_AGENT_MODEL` stays as this agent's own override.
+    """
+    return (os.environ.get("APPLICATION_AGENT_MODEL")
+            or os.environ.get("AGENT_MODEL")
+            or DEFAULT_MODEL)
 
 
 def health(state: State) -> dict[str, Any]:
@@ -45,12 +75,9 @@ class TurnRunner(Protocol):
 
 class State:
     def __init__(self) -> None:
-        self.model = os.environ.get("APPLICATION_AGENT_MODEL", "gpt-5.5")
+        self.model = model_from_env()
         self.token = os.environ.get("AGENT_SERVICE_TOKEN", "")
         self.lake_url = os.environ.get("LAKE_URL", "")
-        self.trace_dir = Path(
-            os.environ.get("TRACE_DIR", "/tmp/agent-application-traces")
-        )
         self.lock = threading.Lock()
         self.conversations: dict[str, list[dict[str, Any]]] = {}
 
@@ -67,11 +94,20 @@ def run_turn(
 ) -> dict[str, Any]:
     message = str(body.get("message") or "")
     token = str(body.get("lake_token") or "")
-    lake_url = str(body.get("lake_url") or state.lake_url)
-    if not message or not token or not lake_url:
+    # The turn's credential goes only to Lake at this service's own LAKE_URL; a turn's
+    # `lake_url` is ignored, so the bearer cannot be sent to a host the caller names
+    # (agent-application#30).
+    lake_url = lakes_url(state.lake_url)
+    if lake_url is None:
         return {
             "ok": False,
-            "error": "a turn needs a message, the person's lake_token and lake URL",
+            "error": "LAKE_URL is not set: this agent sends a turn's credential only to "
+                     "Lake's configured address",
+        }
+    if not message or not token:
+        return {
+            "ok": False,
+            "error": "a turn needs a message and the person's lake_token",
         }
     from agent_application.agent import Turn, answer_turn
 
@@ -93,26 +129,32 @@ def run_turn(
         state.model,
         lake,
     )
+    # The trace id names the turn; lake stores it with the answer in the turn's workspace Zetta.
+    # Nothing is written to the pod's disk: the pod serves every tenant, and the message and the
+    # answer (with the generated App source) are workspace content (agent-application#21).
     trace_id = str(uuid.uuid4())
-    state.trace_dir.mkdir(parents=True, exist_ok=True)
-    trace = {
-        "trace_id": trace_id,
-        "agent": "agent-application",
-        "prompt_version": PROMPT_VERSION,
-        "at": datetime.now(timezone.utc).isoformat(),
-        "conversation_id": conversation_id,
-        "message": message,
-        "answer": answer,
-    }
-    (state.trace_dir / f"{trace_id}.json").write_text(
-        json.dumps(trace, indent=1, default=str)
-    )
     return {
         "ok": True,
         "conversation_id": conversation_id,
         "trace_id": trace_id,
         **answer,
     }
+
+
+def turn_refusal(authorization: str | None, token: str) -> tuple[int, str] | None:
+    """Why `POST /v1/turn` is refused, as `(status, error)`, or None when the caller may proceed.
+
+    The route fails closed: with `AGENT_SERVICE_TOKEN` unset or empty every turn is refused, so a
+    service started without it is never open. The bearer is compared in constant time
+    (`hmac.compare_digest` over bytes), so the comparison's timing says nothing about the token.
+    """
+    if not token:
+        return 503, "AGENT_SERVICE_TOKEN is not set; this service refuses every turn"
+    expected = f"Bearer {token}".encode()
+    supplied = (authorization or "").encode("utf-8", "surrogateescape")
+    if not hmac.compare_digest(supplied, expected):
+        return 401, "unauthorized"
+    return None
 
 
 def serve() -> int:
@@ -137,9 +179,10 @@ def serve() -> int:
             if self.path != "/v1/turn":
                 self._send(404, {"ok": False, "error": "not found"})
                 return
-            authorization = self.headers.get("Authorization")
-            if state.token and authorization != f"Bearer {state.token}":
-                self._send(401, {"ok": False, "error": "unauthorized"})
+            refusal = turn_refusal(self.headers.get("Authorization"), state.token)
+            if refusal is not None:
+                status, error = refusal
+                self._send(status, {"ok": False, "error": error})
                 return
             try:
                 length = int(self.headers.get("Content-Length", "0"))

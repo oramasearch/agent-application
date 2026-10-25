@@ -80,6 +80,15 @@ SECRET_LITERAL = re.compile(
     r"(?:password|passwd|secret|token|api[_-]?key)\s*[=:]\s*['\"][^'\"]{6,}['\"])",
     re.I,
 )
+# A Kubernetes Secret key, which a lake secret reference's field must be (lake docs/api/web-apps.md).
+SECRET_FIELD = re.compile(r"[-._a-zA-Z0-9]+")
+LAKE_SECRET_SCHEME = "lake-secret://"
+SECRET_REFERENCE_RULE = (
+    "a lake secret reference, {\"secret\": {\"mount_id\", \"name\", \"field\"}} or "
+    "{\"secret\": \"lake-secret://<mount id>/<name>#<field>\"}, never a Kubernetes Secret name; "
+    "when the person has not named an existing secret, leave the variable out of app.env and "
+    "tell them to set it on the App's Environment settings"
+)
 DEPENDENCY_CREDENTIAL = re.compile(r"[a-z][a-z0-9+.-]*://[^/\s]+@", re.I)
 PUBLIC_REQUEST = re.compile(
     r"\b(public|publicly|anyone|anonymous|without (?:sign[- ]?in|auth))\b",
@@ -330,11 +339,14 @@ def app_defects(
         problems.append("app.env must be an object")
     else:
         for name, value in env.items():
-            if SECRET_NAME.search(str(name)):
+            if isinstance(value, dict) and "secret" in value:
                 if not secret_reference(value):
-                    problems.append(
-                        f"app.env cannot carry plaintext secret {name}; use a secret reference"
-                    )
+                    problems.append(f"app.env {name} must be {SECRET_REFERENCE_RULE}")
+            elif SECRET_NAME.search(str(name)):
+                problems.append(
+                    f"app.env cannot carry plaintext secret {name}; it must be "
+                    f"{SECRET_REFERENCE_RULE}"
+                )
             elif SECRET_LITERAL.search(str(value)):
                 problems.append(f"app.env cannot carry secret value {name}; use a binding")
     bindings = app.get("bindings", {})
@@ -360,10 +372,37 @@ def app_defects(
 
 
 def secret_reference(value: Any) -> bool:
+    """A secret environment value as lake accepts it (lake#625, docs/api/web-apps.md): one field of
+    one secret in a lake secret mount, `{"secret": {"mount_id", "name", "field"}}` or
+    `{"secret": "lake-secret://<mount id>/<name>#<field>"}`. A Kubernetes Secret name is refused:
+    a Kubernetes Secret is only the projection the operator writes when the App is deployed."""
     if not isinstance(value, dict) or set(value) != {"secret"}:
         return False
-    name = value.get("secret")
-    return isinstance(name, str) and bool(name.strip())
+    reference = value["secret"]
+    if isinstance(reference, dict):
+        if set(reference) != {"mount_id", "name", "field"}:
+            return False
+        if not all(isinstance(reference[key], str) for key in reference):
+            return False
+        return (
+            bool(reference["mount_id"].strip())
+            and bool(reference["name"].strip())
+            and SECRET_FIELD.fullmatch(reference["field"]) is not None
+        )
+    return isinstance(reference, str) and lake_secret_ref(reference)
+
+
+def lake_secret_ref(text: str) -> bool:
+    """`lake-secret://<mount id>/<name>#<field>`: the name may contain `/` and `#`, and the field
+    follows the last `#`."""
+    if not text.startswith(LAKE_SECRET_SCHEME):
+        return False
+    mount_id, slash, rest = text[len(LAKE_SECRET_SCHEME):].partition("/")
+    name, hash_, field = rest.rpartition("#")
+    return (
+        bool(mount_id) and bool(slash) and bool(hash_) and bool(name)
+        and SECRET_FIELD.fullmatch(field) is not None
+    )
 
 
 def manifest_defects(manifest: str, app: dict[str, Any]) -> list[str]:

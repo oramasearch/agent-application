@@ -46,9 +46,22 @@ image on the host.
 
 Apps default to `auth: lake`. Public access is valid only when the current request explicitly asks
 for it. Zetta bindings are read-only by default. Service connection data and credentials are read
-through `orama_app` bindings, never copied into code or ordinary environment values. An environment
-credential is represented only by an operator-managed reference such as
-`{"API_KEY":{"secret":"forecast-api-key"}}`.
+through `orama_app` bindings, never copied into code or ordinary environment values.
+
+An environment credential is represented only by a lake secret reference (lake#625, lake
+`docs/api/web-apps.md#secret-environment`): one field of one secret in a secret mount of the App's
+workspace, `{"API_KEY":{"secret":{"mount_id":"<mount id>","name":"<secret>","field":"<field>"}}}` or
+`{"API_KEY":{"secret":"lake-secret://<mount id>/<name>#<field>"}}`. Lake's secret store holds the
+value; the Kubernetes Secret is only the projection the operator writes at deploy. A Kubernetes
+Secret name such as `{"secret":"forecast-api-key"}` is refused by lake (`invalid_input` at
+`/env/API_KEY/secret`), and `proposal_defects` refuses it before the proposal is shown, as it does
+any malformed reference or a plaintext value under a secret-looking name.
+
+Lake checks a reference with the caller's own `get_secret_mount` and `read_secret`, and a confirmed
+ApplicationAgent turn's task credential has neither scope. So the agent proposes a reference only
+when the person has named an existing secret by mount, name and field. Otherwise it leaves the
+variable out of `create_app` and tells the person to set it on the App's Environment settings. It
+never asks for a secret's value.
 
 Customer scope is attached to lake list, workspace-query, App, and build reads. Build reads are
 GET requests and name the build with `build_id`; App reads name the App with `app_id`. The

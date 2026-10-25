@@ -7,7 +7,6 @@ from agent_application.service import State, run_turn
 
 def test_turn_requires_person_credential_and_lake_url(tmp_path) -> None:
     state = State()
-    state.trace_dir = tmp_path
 
     answer = run_turn({"message": "build a dashboard"}, state)
 
@@ -15,9 +14,13 @@ def test_turn_requires_person_credential_and_lake_url(tmp_path) -> None:
     assert "lake_token" in answer["error"]
 
 
-def test_turn_preserves_result_contract_and_writes_trace(tmp_path, monkeypatch) -> None:
+def test_turn_preserves_result_contract_and_keeps_nothing_on_disk(tmp_path, monkeypatch) -> None:
+    """agent-application#21: the pod serves every tenant, and the message and the answer (the
+    generated App source) are workspace content, so a turn writes no trace file, even when the
+    operator still sets TRACE_DIR. Lake keeps the answer in the turn's workspace Zetta."""
+    monkeypatch.setenv("TRACE_DIR", str(tmp_path / "traces"))
+    monkeypatch.setenv("TMPDIR", str(tmp_path / "tmp"))
     state = State()
-    state.trace_dir = tmp_path
     expected = {
         "reply": "Ready to review.",
         "result": {
@@ -46,7 +49,9 @@ def test_turn_preserves_result_contract_and_writes_trace(tmp_path, monkeypatch) 
 
     assert answer["ok"]
     assert answer["result"] == expected["result"]
-    assert len(list(tmp_path.glob("*.json"))) == 1
+    assert answer["trace_id"], "the turn is still named, for lake to store with the answer"
+    assert [path for path in tmp_path.rglob("*") if path.is_file()] == []
+    assert not hasattr(state, "trace_dir")
 
 
 
@@ -77,7 +82,6 @@ def test_turn_calls_its_model_through_lakes_gateway_with_the_turns_key(tmp_path,
     monkeypatch.setattr(service, "gateway_client", lambda url, token: model.gateway_client(
         url, token, http_client=httpx.Client(transport=httpx.MockTransport(gateway))))
     state = State()
-    state.trace_dir = tmp_path
     answer = run_turn({"message": "build a dashboard", "lake_token": "lat.task.secret",
                        "lake_url": "http://lake:8080"}, state)
     assert answer["ok"] and answer["reply"] == "Ready."
@@ -95,3 +99,26 @@ def test_healthz_reports_the_release_version() -> None:
     assert body["ok"]
     assert body["version"] == importlib.metadata.version("agent-application")
     assert body["prompt_version"] == PROMPT_VERSION
+
+
+def test_the_lakes_agent_model_reaches_the_agent(monkeypatch) -> None:
+    # The operator sets AGENT_MODEL on every library agent pod from the Lake's spec.agents.model.
+    monkeypatch.delenv("APPLICATION_AGENT_MODEL", raising=False)
+    monkeypatch.setenv("AGENT_MODEL", "gpt-lake-choice")
+
+    assert State().model == "gpt-lake-choice"
+
+
+def test_application_agent_model_overrides_the_lakes_model(monkeypatch) -> None:
+    monkeypatch.setenv("AGENT_MODEL", "gpt-lake-choice")
+    monkeypatch.setenv("APPLICATION_AGENT_MODEL", "gpt-override")
+
+    assert State().model == "gpt-override"
+
+
+def test_the_model_defaults_when_neither_is_set(monkeypatch) -> None:
+    # An empty value counts as unset.
+    monkeypatch.delenv("AGENT_MODEL", raising=False)
+    monkeypatch.setenv("APPLICATION_AGENT_MODEL", "")
+
+    assert State().model == "gpt-5.5"
