@@ -38,7 +38,7 @@ def lakes_url(configured: str) -> str | None:
     return url
 
 
-DEFAULT_MODEL = "gpt-5.5"
+DEFAULT_MODEL = "gpt-6.1-sol"
 
 
 def model_from_env() -> str:
