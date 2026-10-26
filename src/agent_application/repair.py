@@ -38,6 +38,7 @@ from agent_application.agent import (
     dependency_requirements,
     failure_explanation,
     follow_rollout,
+    orama_app_misuse,
     model_answer,
     rollout_state,
     safe_path,
@@ -382,9 +383,11 @@ def file_change_defects(
                 problems.append(f"{path} contains a delegated credential")
         if path.endswith(".py"):
             try:
-                ast.parse(contents, filename=path)
+                tree = ast.parse(contents, filename=path)
             except SyntaxError as error:
                 problems.append(f"{path} does not compile: {error.msg} at line {error.lineno}")
+            else:
+                problems.extend(orama_app_misuse(path, tree))
         if path == "app.toml":
             problems.extend(manifest_change_defects(contents, current.get("app.toml")))
     for path in deleted:

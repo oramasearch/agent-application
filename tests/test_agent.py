@@ -685,3 +685,26 @@ def test_the_prompt_proposes_lake_secret_references_and_never_asks_for_a_value()
     assert "Environment settings" in prompt
     assert "Never ask for a secret's value" in prompt
     assert '{"secret": "forecast-api-key"}' not in prompt
+
+
+def test_orama_app_functions_must_be_called_before_their_reads() -> None:
+    import ast
+
+    from agent_application.agent import orama_app_misuse
+
+    def problems(source: str) -> list[str]:
+        return orama_app_misuse("app.py", ast.parse(source))
+
+    # The production App of 2026-10-26: compiles, then fails on every page.
+    wrong = problems("from orama_app import zetta\nrows = zetta.sql('SELECT 1')\n")
+    assert len(wrong) == 1 and "line 2" in wrong[0] and "zetta().sql" in wrong[0]
+    assert problems("from orama_app import zetta as z\nz.datasets()\n")
+    assert problems("import orama_app\norama_app.zetta.sql('SELECT 1')\n")
+    assert problems("from orama_app import service\nservice.host\n")
+
+    assert problems("from orama_app import zetta\nrows = zetta().sql('SELECT 1')\n") == []
+    assert problems("from orama_app import zetta\nwith zetta() as w:\n    w.sql('SELECT 1')\n") == []
+    assert problems("from orama_app import service\nservice('db')['host']\n") == []
+    assert problems("import orama_app\norama_app.zetta().sql('SELECT 1')\n") == []
+    # A name that is not orama_app's is left alone.
+    assert problems("zetta = object()\nzetta.sql\n") == []
