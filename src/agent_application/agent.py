@@ -300,6 +300,7 @@ def file_defects(files: list[Any], secret_values: tuple[str, ...]) -> list[str]:
                 )
             else:
                 problems.extend(orama_app_misuse(path, tree))
+                problems.extend(unbounded_selects(path, tree))
     if total > MAX_SOURCE_BYTES:
         problems.append("App source is larger than the proposal limit")
     if "app.toml" not in paths:
@@ -351,6 +352,45 @@ def orama_app_misuse(path: str, tree: ast.AST) -> list[str]:
             problems.append(
                 f"{path} line {node.lineno}: `{function}.{node.attr}` reads an attribute of the function "
                 f"orama_app.{function}; {ORAMA_APP_FUNCTIONS[function]}"
+            )
+    return problems
+
+
+SQL_SELECT = re.compile(r"\bselect\b", re.I)
+SQL_BOUNDED = re.compile(r"\blimit\b|\bgroup\s+by\b|\b(?:count|sum|avg|min|max)\s*\(", re.I)
+
+
+def unbounded_selects(path: str, tree: ast.AST) -> list[str]:
+    """`sql(...)` calls whose literal statement reads rows with neither a LIMIT nor an aggregate.
+
+    Such a read copies a whole table into the App (agent-application#51); Lake answers `too_many_rows` past 5,000 rows.
+    Only the statement's literal text is read: an f-string's placeholders count as nothing.
+    """
+    problems = []
+    for node in ast.walk(tree):
+        if not (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "sql"
+            and node.args
+        ):
+            continue
+        statement = node.args[0]
+        if isinstance(statement, ast.Constant) and isinstance(statement.value, str):
+            text = statement.value
+        elif isinstance(statement, ast.JoinedStr):
+            text = " ".join(
+                part.value
+                for part in statement.values
+                if isinstance(part, ast.Constant) and isinstance(part.value, str)
+            )
+        else:
+            continue
+        if SQL_SELECT.search(text) and not SQL_BOUNDED.search(text):
+            problems.append(
+                f"{path} line {node.lineno}: the SQL reads rows with no LIMIT and no aggregate; read only what "
+                "the page shows: aggregate in SQL (GROUP BY, COUNT, SUM, AVG, MIN, MAX) or page with LIMIT and "
+                "OFFSET (at most 5,000 rows a query)"
             )
     return problems
 

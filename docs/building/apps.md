@@ -53,6 +53,12 @@ through `orama_app` bindings, never copied into code or ordinary environment val
 reads on the bare function, with the line and the right form: such code compiles, then fails on every page
 (`AttributeError: 'function' object has no attribute 'sql'`, a production App on 2026-10-26).
 
+Generated Apps read only what the page shows: SQL aggregates (`GROUP BY`, `COUNT`, `SUM`, `AVG`, `MIN`, `MAX`)
+and row-level reads paged with `LIMIT`/`OFFSET`. Validation and repair flag a literal `sql(...)` statement that reads
+rows with neither a `LIMIT` nor an aggregate (#51): it copies a whole table into the App, and Lake refuses an App query
+past 5,000 rows (`too_many_rows`). The workspace's SQL has no joins, so combined data comes from a table a pipeline
+writes.
+
 An environment credential is represented only by a lake secret reference (lake#625, lake
 `docs/api/web-apps.md#secret-environment`): one field of one secret in a secret mount of the App's
 workspace, `{"API_KEY":{"secret":{"mount_id":"<mount id>","name":"<secret>","field":"<field>"}}}` or

@@ -708,3 +708,27 @@ def test_orama_app_functions_must_be_called_before_their_reads() -> None:
     assert problems("import orama_app\norama_app.zetta().sql('SELECT 1')\n") == []
     # A name that is not orama_app's is left alone.
     assert problems("zetta = object()\nzetta.sql\n") == []
+
+
+def test_app_sql_reads_only_what_the_page_shows() -> None:
+    import ast
+
+    from agent_application.agent import unbounded_selects
+
+    def problems(source: str) -> list[str]:
+        return unbounded_selects("app.py", ast.parse(source))
+
+    # The production loader of 2026-10-26: whole tables, every ten minutes (agent-application#51).
+    loader = (
+        "with zetta() as w:\n"
+        "    a = w.sql(f'SELECT * FROM {CUSTOMERS_TABLE}')\n"
+        "    b = w.sql('select * from segmentation_results.profiles')\n"
+    )
+    found = problems(loader)
+    assert len(found) == 2 and "line 2" in found[0] and "LIMIT" in found[0]
+
+    assert problems("w.sql('SELECT segment, COUNT(*) FROM d.t GROUP BY segment')") == []
+    assert problems("w.sql('SELECT AVG(spend) FROM d.t')") == []
+    assert problems("w.sql(f'SELECT * FROM {T} LIMIT 50 OFFSET {page * 50}')") == []
+    assert problems("w.sql(statement)") == []  # not a literal: nothing to read
+    assert problems("db.execute('SELECT * FROM t')") == []  # not an orama_app sql call
