@@ -293,17 +293,65 @@ def file_defects(files: list[Any], secret_values: tuple[str, ...]) -> list[str]:
                 problems.append(f"{path} contains a delegated credential")
         if path.endswith(".py"):
             try:
-                ast.parse(contents, filename=path)
+                tree = ast.parse(contents, filename=path)
             except SyntaxError as error:
                 problems.append(
                     f"{path} does not compile: {error.msg} at line {error.lineno}"
                 )
+            else:
+                problems.extend(orama_app_misuse(path, tree))
     if total > MAX_SOURCE_BYTES:
         problems.append("App source is larger than the proposal limit")
     if "app.toml" not in paths:
         problems.append("app.toml is required")
     if "README.md" not in paths:
         problems.append("README.md is required to document the generated App")
+    return problems
+
+
+ORAMA_APP_FUNCTIONS = {
+    "zetta": "call it first: `zetta().sql(...)`, or `with zetta() as workspace: workspace.sql(...)`",
+    "service": "call it with the binding name: `service(\"<name>\")[\"<field>\"]`",
+}
+
+
+def orama_app_misuse(path: str, tree: ast.AST) -> list[str]:
+    """Attribute reads on orama_app's functions themselves, such as `zetta.sql(...)`.
+
+    `zetta` and `service` are functions that return a client and a connection dictionary. An App that reads
+    `zetta.sql` compiles, then stops on every page with `AttributeError: 'function' object has no attribute 'sql'`.
+    """
+    local: dict[str, str] = {}
+    modules: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module == "orama_app":
+            for alias in node.names:
+                if alias.name in ORAMA_APP_FUNCTIONS:
+                    local[alias.asname or alias.name] = alias.name
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name == "orama_app":
+                    modules.add(alias.asname or alias.name)
+    problems = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Attribute):
+            continue
+        target = node.value
+        function = None
+        if isinstance(target, ast.Name) and target.id in local:
+            function = local[target.id]
+        elif (
+            isinstance(target, ast.Attribute)
+            and target.attr in ORAMA_APP_FUNCTIONS
+            and isinstance(target.value, ast.Name)
+            and target.value.id in modules
+        ):
+            function = target.attr
+        if function is not None:
+            problems.append(
+                f"{path} line {node.lineno}: `{function}.{node.attr}` reads an attribute of the function "
+                f"orama_app.{function}; {ORAMA_APP_FUNCTIONS[function]}"
+            )
     return problems
 
 

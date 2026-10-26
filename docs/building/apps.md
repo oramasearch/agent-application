@@ -48,6 +48,11 @@ Apps default to `auth: lake`. Public access is valid only when the current reque
 for it. Zetta bindings are read-only by default. Service connection data and credentials are read
 through `orama_app` bindings, never copied into code or ordinary environment values.
 
+`zetta` and `service` are functions: generated code calls `zetta()` (or `with zetta() as workspace:`) and
+`service("<name>")` before reading from them. Validation and repair refuse `zetta.sql(...)` and other attribute
+reads on the bare function, with the line and the right form: such code compiles, then fails on every page
+(`AttributeError: 'function' object has no attribute 'sql'`, a production App on 2026-10-26).
+
 An environment credential is represented only by a lake secret reference (lake#625, lake
 `docs/api/web-apps.md#secret-environment`): one field of one secret in a secret mount of the App's
 workspace, `{"API_KEY":{"secret":{"mount_id":"<mount id>","name":"<secret>","field":"<field>"}}}` or
