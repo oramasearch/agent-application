@@ -10,6 +10,7 @@ tag and deployed; it is never produced by a second build.
 
 | Release | Date | Summary |
 |---|---|---|
+| [v0.2.1](v0.2.1.md) | 2026-10-25 | A patch: `repair` and `change` turns on an existing App, as a confirmed diff committed in one commit, with Lake's opt-in auto-fix (lake#1207) |
 | [v0.2.0](v0.2.0.md) | 2026-10-25 | Security-review fixes (constant-time service token, refused when unset; the turn credential only to `LAKE_URL`; no turn trace on disk), Lake secret references, and the Lake's `AGENT_MODEL` |
 | [v0.1.0](v0.1.0.md) | 2026-10-17 | The first release: the turn API and `/healthz`, the agent-bus worker, the propose-then-confirm App build and deploy through lake, prompt `v1`, and the private image |
 
