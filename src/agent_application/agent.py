@@ -56,6 +56,8 @@ READ_CAPABILITIES = {
     "app_logs",
     "build_logs",
     "get_build",
+    "list_builds",
+    "get_auto_fix",
     "receive_app_events",
     "receive_build_events",
 }
@@ -66,7 +68,9 @@ CUSTOMER_SCOPED_CAPABILITIES = {
     "build_logs",
     "get_app",
     "get_build",
+    "get_auto_fix",
     "list_apps",
+    "list_builds",
     "list_datasets",
     "list_repositories",
     "list_services",
@@ -104,6 +108,9 @@ class Turn:
     customer_id: str = ""
     conversation_id: str = ""
     context: dict[str, Any] = field(default_factory=dict)
+    # `app` builds a new App; `repair` and `change` work on the existing App in
+    # `context.app_id` (lake#1207, repair.py).
+    kind: str = "app"
 
 
 class LakeError(Exception):
@@ -533,6 +540,10 @@ def answer_turn(
     owned = lake is None
     lake = lake or Lake(turn)
     try:
+        if turn.kind in {"repair", "change"}:
+            from agent_application.repair import answer_app_turn
+
+            return answer_app_turn(turn, history, client, model, lake)
         confirmed = turn.context.get("confirmed_proposal")
         if isinstance(confirmed, dict):
             return deploy_confirmed(turn, confirmed, lake)
