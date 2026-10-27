@@ -10,6 +10,7 @@ tag and deployed; it is never produced by a second build.
 
 | Release | Date | Summary |
 |---|---|---|
+| [v0.2.4](v0.2.4.md) | 2026-10-26 | A patch: a conversation is seeded from Lake's history after a restart (#55) |
 | [v0.2.3](v0.2.3.md) | 2026-10-26 | A patch: generated Apps aggregate in SQL and page their reads (#51); fallback model `gpt-6.1-sol` |
 | [v0.2.2](v0.2.2.md) | 2026-10-26 | A patch: generated Apps call `zetta()` before its reads; `zetta.sql(...)` is refused before commit (#47) |
 | [v0.2.1](v0.2.1.md) | 2026-10-25 | A patch: `repair` and `change` turns on an existing App, as a confirmed diff committed in one commit, with Lake's opt-in auto-fix (lake#1207) |
