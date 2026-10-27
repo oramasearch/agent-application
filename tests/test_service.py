@@ -122,3 +122,20 @@ def test_the_model_defaults_when_neither_is_set(monkeypatch) -> None:
     monkeypatch.setenv("APPLICATION_AGENT_MODEL", "")
 
     assert State().model == "gpt-6.1-sol"
+
+
+def test_a_turn_seeds_its_conversation_from_lakes_history_after_a_restart() -> None:
+    from agent_application.service import seeded_history
+
+    items = [
+        {"task_id": "t1", "message": "Add a chart by region", "reply": "Here is the change.", "outcome": "proposal",
+         "diff": "--- a/app.py\n+++ b/app.py\n+chart()", "status": "Succeeded"},
+        {"task_id": "t2", "message": "Yes, do it", "reply": "Deployed.", "confirmed": True, "status": "Succeeded"},
+        "not a turn",
+    ]
+    seeded = seeded_history(items)
+    assert [m["role"] for m in seeded] == ["user", "assistant", "user", "assistant"]
+    assert seeded[0]["content"] == "Add a chart by region"
+    assert "Proposed diff:" in seeded[1]["content"] and "+chart()" in seeded[1]["content"]
+    assert "confirmed" in seeded[3]["content"]
+    assert seeded_history(None) == [] and seeded_history({"x": 1}) == []
