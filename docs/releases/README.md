@@ -10,6 +10,7 @@ tag and deployed; it is never produced by a second build.
 
 | Release | Date | Summary |
 |---|---|---|
+| [v0.2.6](v0.2.6.md) | 2026-10-26 | A patch: repository paths are written without '.' components, so a confirmed App at path '.' commits |
 | [v0.2.5](v0.2.5.md) | 2026-10-26 | A patch: repository paths are written without '.' components, so a confirmed App at path '.' commits |
 | [v0.2.4](v0.2.4.md) | 2026-10-26 | A patch: a conversation is seeded from Lake's history after a restart (#55) |
 | [v0.2.3](v0.2.3.md) | 2026-10-26 | A patch: generated Apps aggregate in SQL and page their reads (#51); fallback model `gpt-6.1-sol` |
