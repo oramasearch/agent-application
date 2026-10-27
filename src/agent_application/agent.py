@@ -16,6 +16,8 @@ from typing import Any
 import httpx
 from openai import OpenAI
 
+from agent_application.app_filters import unused_widgets
+
 PROMPT_VERSION = "v1"
 PROMPTS = Path(__file__).parent / "prompts"
 MAX_MODEL_ROUNDS = 10
@@ -185,15 +187,35 @@ class Lake:
     def read(self, capability: str, arguments: dict[str, Any]) -> dict[str, Any]:
         if capability not in READ_CAPABILITIES:
             raise LakeError(capability, "not_allowed", "not an ApplicationAgent read")
-        return self.call(
+        value = self.call(
             capability,
             arguments,
             read=True,
             use_post=capability in POST_READS,
         )
+        return exact_file_text(value) if capability == "repository_file" else value
 
     def write(self, capability: str, arguments: dict[str, Any]) -> dict[str, Any]:
         return self.call(capability, arguments, read=False)
+
+
+def exact_file_text(value: dict[str, Any]) -> dict[str, Any]:
+    """A repository file's `contents`, from its exact bytes.
+
+    Lake's `contents` writes every non-ASCII byte as literal `\\xNN` text (lake#1238), so a file read
+    from it and committed back kept the escapes: a live App's title became `\\xF0\\x9F\\x91\\xA5`
+    instead of an emoji. `content_base64` is exact. Valid UTF-8 becomes `contents`; anything else is
+    binary and has no `contents`.
+    """
+    encoded = value.get("content_base64")
+    if not isinstance(encoded, str):
+        return value
+    value = dict(value)
+    try:
+        value["contents"] = base64.b64decode(encoded, validate=True).decode("utf-8")
+    except (ValueError, UnicodeDecodeError):
+        value.pop("contents", None)
+    return value
 
 
 def with_customer(arguments: dict[str, Any], customer_id: str) -> dict[str, Any]:
@@ -302,6 +324,7 @@ def file_defects(files: list[Any], secret_values: tuple[str, ...]) -> list[str]:
             else:
                 problems.extend(orama_app_misuse(path, tree))
                 problems.extend(unbounded_selects(path, tree))
+                problems.extend(unused_widgets(path, tree))
     if total > MAX_SOURCE_BYTES:
         problems.append("App source is larger than the proposal limit")
     if "app.toml" not in paths:
