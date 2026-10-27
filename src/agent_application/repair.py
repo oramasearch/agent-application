@@ -29,6 +29,7 @@ from agent_application.agent import (
     ROLLOUT_FAILED,
     SECRET_LITERAL,
     Lake,
+    repository_path,
     LakeError,
     Turn,
     build_failure_explanation,
@@ -507,7 +508,7 @@ def apply_proposal(
     root = source_root(source) or source_root({"path": app.get("path")})
     operations = []
     for item in files:
-        path = f"{root}/{item['path']}" if root else item["path"]
+        path = repository_path(root, item["path"])
         operations.append(
             {
                 "type": "file",
@@ -516,7 +517,7 @@ def apply_proposal(
             }
         )
     for path in deleted:
-        operations.append({"type": "deletedFile", "path": f"{root}/{path}" if root else path})
+        operations.append({"type": "deletedFile", "path": repository_path(root, path)})
     headline = first_line(str(proposal.get("diagnosis") or turn.message))
     verb = "Repair" if kind == "repair" else "Change"
     message = f"{verb} the {app.get('name')} App: {headline}"
