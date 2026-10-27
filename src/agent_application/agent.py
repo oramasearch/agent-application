@@ -185,15 +185,35 @@ class Lake:
     def read(self, capability: str, arguments: dict[str, Any]) -> dict[str, Any]:
         if capability not in READ_CAPABILITIES:
             raise LakeError(capability, "not_allowed", "not an ApplicationAgent read")
-        return self.call(
+        value = self.call(
             capability,
             arguments,
             read=True,
             use_post=capability in POST_READS,
         )
+        return exact_file_text(value) if capability == "repository_file" else value
 
     def write(self, capability: str, arguments: dict[str, Any]) -> dict[str, Any]:
         return self.call(capability, arguments, read=False)
+
+
+def exact_file_text(value: dict[str, Any]) -> dict[str, Any]:
+    """A repository file's `contents`, from its exact bytes.
+
+    Lake's `contents` writes every non-ASCII byte as literal `\\xNN` text (lake#1238), so a file read
+    from it and committed back kept the escapes: a live App's title became `\\xF0\\x9F\\x91\\xA5`
+    instead of an emoji. `content_base64` is exact. Valid UTF-8 becomes `contents`; anything else is
+    binary and has no `contents`.
+    """
+    encoded = value.get("content_base64")
+    if not isinstance(encoded, str):
+        return value
+    value = dict(value)
+    try:
+        value["contents"] = base64.b64decode(encoded, validate=True).decode("utf-8")
+    except (ValueError, UnicodeDecodeError):
+        value.pop("contents", None)
+    return value
 
 
 def with_customer(arguments: dict[str, Any], customer_id: str) -> dict[str, Any]:
