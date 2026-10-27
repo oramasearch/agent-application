@@ -121,4 +121,4 @@ def test_the_model_defaults_when_neither_is_set(monkeypatch) -> None:
     monkeypatch.delenv("AGENT_MODEL", raising=False)
     monkeypatch.setenv("APPLICATION_AGENT_MODEL", "")
 
-    assert State().model == "gpt-5.5"
+    assert State().model == "gpt-6.1-sol"

@@ -4,7 +4,7 @@ The ApplicationAgent: builds web apps and data apps from a description, commits 
 
 Private. Its image is published **private** as `oramasearch/agent-application` on Docker Hub.
 
-Current release: [v0.2.2](docs/releases/v0.2.2.md) ([all releases](docs/releases/README.md)).
+Current release: [v0.2.3](docs/releases/v0.2.3.md) ([all releases](docs/releases/README.md)).
 
 ## Service
 
@@ -20,7 +20,7 @@ image reference.
 to `<LAKE_URL>/openai/v1` with the turn's own `lake_token` as the API key (`model.py`), so lake
 counts its tokens in the turn's workspace and enforces the account's model-token limit. The service
 holds no `OPENAI_API_KEY`; only the offline evals, which run for no workspace, call OpenAI directly. The model name is `APPLICATION_AGENT_MODEL`, else the Lake's `AGENT_MODEL` (set
-by the operator from `spec.agents.model`), else `gpt-5.5` (`docs/operations/service.md`).
+by the operator from `spec.agents.model`), else `gpt-6.1-sol` (`docs/operations/service.md`).
 
 **A turn's credential goes only to Lake at this service's own `LAKE_URL`** (#30). Lake capabilities
 and the model gateway are always reached at `LAKE_URL`; a turn's `lake_url` is ignored, so the
