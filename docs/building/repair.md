@@ -70,3 +70,10 @@ Lake keeps one repair and one change conversation per App, so later instructions
 agent's history for that conversation (held in memory while the service runs, never on disk) holds
 the earlier answers, and each turn is given the App's files as they are now, so a turn after a
 restart still starts from the current source.
+
+## Conversation history across restarts
+
+This service keeps a conversation's messages in process memory, so a restart or another replica starts empty. Lake sends
+up to 20 earlier turns of an App's change or repair conversation with each turn (`history`: message, reply, outcome,
+diff, confirmed; lake#1247). When the service has no history for the conversation, `seeded_history()` turns them into
+chat messages first, so the agent keeps the thread.
