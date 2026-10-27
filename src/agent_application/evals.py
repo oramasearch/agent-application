@@ -1,9 +1,16 @@
-"""Live model evaluations for the three required ApplicationAgent scenarios."""
+"""Live model evaluations for the ApplicationAgent scenarios.
+
+The `filtered-dashboard` case also runs the proposed Streamlit App against a SQLite copy of its dataset and chooses
+each sidebar filter (`app_filters.sidebar_filter_defects`, agent-application#64).
+"""
 
 from __future__ import annotations
 
 import json
+import random
 import sys
+import tempfile
+import tomllib
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -11,7 +18,8 @@ from typing import Any
 
 from openai import OpenAI
 
-from agent_application.agent import Turn, answer_turn, proposal_defects
+from agent_application.agent import LakeError, Turn, answer_turn, proposal_defects
+from agent_application.app_filters import SqliteWorkspace, sidebar_filter_defects
 from agent_application.service import model_from_env
 
 
@@ -22,6 +30,55 @@ class Case:
     framework: str
     binding: str
     source_markers: tuple[str, ...]
+    filters: bool = False
+
+
+def customer_rows(count: int = 400) -> list[dict[str, Any]]:
+    """The `datasets.customers` rows of the filtered-dashboard case: the same every run."""
+    generator = random.Random(64)
+    countries = ["United States", "Canada", "Germany", "France", "Brazil", "Japan", "India", "Australia"]
+    segments = ["Enterprise", "Mid-Market", "SMB", "Consumer"]
+    rows = []
+    for index in range(count):
+        rows.append(
+            {
+                "customer_id": f"C{index:04d}",
+                "name": f"Customer {index}",
+                "email": f"customer{index}@example.com",
+                "country": generator.choice(countries),
+                "segment": generator.choice(segments),
+                "plan": generator.choice(["free", "starter", "pro", "enterprise"]),
+                "signup_date": f"20{generator.randint(22, 26)}-{generator.randint(1, 12):02d}-"
+                f"{generator.randint(1, 28):02d}",
+                "lifetime_value": round(generator.uniform(50, 25_000), 2),
+                "monthly_spend": round(generator.uniform(0, 2_000), 2),
+                "orders": generator.randint(0, 120),
+                "churned": generator.random() < 0.25,
+                "nps": generator.randint(0, 10),
+            }
+        )
+    return rows
+
+
+CUSTOMERS = customer_rows()
+CUSTOMER_COLUMNS = [
+    {"name": "customer_id", "type": "string"},
+    {"name": "name", "type": "string"},
+    {"name": "email", "type": "string"},
+    {"name": "country", "type": "string"},
+    {"name": "segment", "type": "string"},
+    {"name": "plan", "type": "string"},
+    {"name": "signup_date", "type": "date"},
+    {"name": "lifetime_value", "type": "float"},
+    {"name": "monthly_spend", "type": "float"},
+    {"name": "orders", "type": "int"},
+    {"name": "churned", "type": "bool"},
+    {"name": "nps", "type": "int"},
+]
+
+
+def customers_workspace() -> SqliteWorkspace:
+    return SqliteWorkspace({"datasets.customers": CUSTOMERS})
 
 
 CASES = (
@@ -55,6 +112,18 @@ CASES = (
         "none",
         ("<", "forecast"),
     ),
+    Case(
+        "filtered-dashboard",
+        (
+            "Build a customer insights dashboard in Streamlit over the datasets.customers dataset. Put filters "
+            "in the sidebar for country (a multiselect), segment, and a signup date range, and show key "
+            "metrics, charts by segment and country, and a table of customers. Propose it now."
+        ),
+        "streamlit",
+        "zetta",
+        ("zetta", "sql", "country", "segment", "signup_date"),
+        filters=True,
+    ),
 )
 
 
@@ -66,13 +135,23 @@ class FakeLake:
 
     def read(self, capability: str, arguments: dict[str, Any]) -> dict[str, Any]:
         self.reads.append(capability)
+        named = json.dumps(arguments).lower()
+        if capability == "get_dataset" and "customers" in named:
+            return {"id": "datasets/customers", "rows": len(CUSTOMERS), "columns": CUSTOMER_COLUMNS}
+        if capability == "workspace_sql" and "customers" in named:
+            statement = str(arguments.get("statement") or arguments.get("sql") or "")
+            try:
+                return customers_workspace().sql(statement)
+            except Exception as error:
+                raise LakeError("workspace_sql", "engine_error", str(error)) from error
         values = {
             "list_datasets": {
                 "datasets": [
                     {
                         "id": "customer_success/accounts",
                         "name": "accounts",
-                    }
+                    },
+                    {"id": "datasets/customers", "name": "customers"},
                 ]
             },
             "get_dataset": {
@@ -139,7 +218,33 @@ def grade(case: Case, answer: dict[str, Any]) -> list[str]:
     for marker in case.source_markers:
         if marker.lower() not in source:
             reasons.append(f"source is missing {marker!r}")
+    if case.filters and not reasons:
+        reasons.extend(filter_defects(result))
     return reasons
+
+
+def filter_defects(result: dict[str, Any]) -> list[str]:
+    """Run the proposed Streamlit App over `datasets.customers` and choose each sidebar filter."""
+    files = {
+        str(item.get("path")): str(item.get("contents") or "")
+        for item in result.get("files") or []
+        if isinstance(item, dict)
+    }
+    try:
+        entrypoint = tomllib.loads(files.get("app.toml", ""))["entrypoint"]
+    except (tomllib.TOMLDecodeError, KeyError):
+        return ["app.toml names no entrypoint"]
+    with tempfile.TemporaryDirectory() as folder:
+        root = Path(folder)
+        for path, contents in files.items():
+            target = root / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(contents)
+        sys.path.insert(0, str(root))
+        try:
+            return sidebar_filter_defects(root / entrypoint, customers_workspace)
+        finally:
+            sys.path.remove(str(root))
 
 
 def run() -> list[dict[str, Any]]:
@@ -160,6 +265,7 @@ def run() -> list[dict[str, Any]]:
             "churn-dashboard": {"list_datasets", "get_dataset", "workspace_sql"},
             "postgres-crud": {"list_services"},
             "static-guide": set(),
+            "filtered-dashboard": {"list_datasets", "get_dataset", "workspace_sql"},
         }[case.id]
         missing_reads = sorted(required_reads - set(lake.reads))
         if missing_reads:

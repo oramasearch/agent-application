@@ -16,6 +16,8 @@ from typing import Any
 import httpx
 from openai import OpenAI
 
+from agent_application.app_filters import unused_widgets
+
 PROMPT_VERSION = "v1"
 PROMPTS = Path(__file__).parent / "prompts"
 MAX_MODEL_ROUNDS = 10
@@ -302,6 +304,7 @@ def file_defects(files: list[Any], secret_values: tuple[str, ...]) -> list[str]:
             else:
                 problems.extend(orama_app_misuse(path, tree))
                 problems.extend(unbounded_selects(path, tree))
+                problems.extend(unused_widgets(path, tree))
     if total > MAX_SOURCE_BYTES:
         problems.append("App source is larger than the proposal limit")
     if "app.toml" not in paths:

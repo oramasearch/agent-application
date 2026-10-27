@@ -311,3 +311,174 @@ async def test_generated_static_site_loads_and_serves() -> None:
     finally:
         shutil.rmtree(loaded.root)
 
+
+
+# Sidebar filters reach the whole page (agent-application#64). The App is run under Streamlit's AppTest over a SQLite
+# copy of `datasets.customers`, and each sidebar filter is chosen in turn.
+
+FILTERED_MANIFEST = """\
+name = "customer-insights"
+framework = "streamlit"
+entrypoint = "app.py"
+port = 8080
+dependencies = ["streamlit", "pandas", "plotly"]
+
+[bindings]
+zetta = true
+services = []
+"""
+
+# Filters in SQL: one WHERE clause that every query shares.
+FILTERED_SQL_APP = '''\
+import pandas as pd
+import plotly.express as px
+import streamlit as st
+from orama_app import zetta
+
+TABLE = "datasets.customers"
+
+
+def frame(workspace, statement):
+    return pd.DataFrame(workspace.sql(statement)["rows"])
+
+
+def quoted(value):
+    return "'" + str(value).replace("'", "''") + "'"
+
+
+with zetta() as workspace:
+    countries = frame(workspace, f"SELECT country FROM {TABLE} GROUP BY country ORDER BY country LIMIT 500")
+    segments = frame(workspace, f"SELECT segment FROM {TABLE} GROUP BY segment ORDER BY segment LIMIT 500")
+    span = frame(workspace, f"SELECT MIN(signup_date) AS first, MAX(signup_date) AS last FROM {TABLE}").iloc[0]
+    with st.sidebar:
+        chosen = st.multiselect("Country", countries["country"].tolist())
+        segment = st.selectbox("Segment", ["All"] + segments["segment"].tolist())
+        dates = st.date_input(
+            "Signup date range",
+            value=(pd.to_datetime(span["first"]).date(), pd.to_datetime(span["last"]).date()),
+        )
+    clauses = []
+    if chosen:
+        clauses.append("(" + " OR ".join("country = " + quoted(c) for c in chosen) + ")")
+    if segment != "All":
+        clauses.append("segment = " + quoted(segment))
+    if len(dates) == 2:
+        clauses.append(f"signup_date >= {quoted(dates[0].isoformat())} AND signup_date <= {quoted(dates[1].isoformat())}")
+    where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
+    summary = frame(workspace, f"SELECT COUNT(*) AS customers, SUM(lifetime_value) AS value FROM {TABLE}{where}").iloc[0]
+    st.metric("Customers", f"{int(summary['customers']):,}")
+    st.metric("Lifetime value", f"{float(summary['value'] or 0):,.0f}")
+    by_segment = frame(workspace, f"SELECT segment, COUNT(*) AS customers FROM {TABLE}{where} GROUP BY segment LIMIT 500")
+    st.plotly_chart(px.bar(by_segment, x="segment", y="customers"))
+    by_country = frame(workspace, f"SELECT country, COUNT(*) AS customers FROM {TABLE}{BY_COUNTRY_WHERE} GROUP BY country LIMIT 500")
+    st.plotly_chart(px.bar(by_country, x="country", y="customers"))
+    st.dataframe(frame(workspace, f"SELECT customer_id, name, country, segment FROM {TABLE}{where} ORDER BY customer_id LIMIT 50"))
+'''
+
+# Filters in pandas: one filtered frame that everything is drawn from.
+FILTERED_FRAME_APP = '''\
+import pandas as pd
+import plotly.express as px
+import streamlit as st
+from orama_app import zetta
+
+
+@st.cache_data
+def load():
+    with zetta() as workspace:
+        rows = workspace.sql("SELECT customer_id, country, segment, signup_date, lifetime_value FROM datasets.customers LIMIT 5000")
+    frame = pd.DataFrame(rows["rows"])
+    frame["signup_date"] = pd.to_datetime(frame["signup_date"])
+    return frame
+
+
+customers = load()
+with st.sidebar:
+    countries = st.multiselect("Country", sorted(customers["country"].unique()))
+    segments = st.multiselect("Segment", sorted(customers["segment"].unique()))
+    dates = st.date_input(
+        "Signup date range", value=(customers["signup_date"].min().date(), customers["signup_date"].max().date())
+    )
+filtered = customers
+if countries:
+    filtered = filtered[filtered["country"].isin(countries)]
+if segments:
+    filtered = filtered[filtered["segment"].isin(segments)]
+if len(dates) == 2:
+    start, end = pd.to_datetime(dates[0]), pd.to_datetime(dates[1])
+    filtered = filtered[(filtered["signup_date"] >= start) & (filtered["signup_date"] <= end)]
+st.metric("Customers", f"{len(filtered):,}")
+by_segment = filtered.groupby("segment").size().reset_index(name="customers")
+st.plotly_chart(px.bar(by_segment, x="segment", y="customers"))
+by_country = CHART_FRAME.groupby("country").size().reset_index(name="customers")
+st.plotly_chart(px.bar(by_country, x="country", y="customers"))
+st.dataframe(filtered.head(50))
+'''
+
+
+def filtered_proposal(source: str) -> dict:
+    proposal = dashboard_proposal()
+    proposal["files"] = [
+        {"path": "app.toml", "contents": FILTERED_MANIFEST},
+        {"path": "app.py", "contents": source},
+        {"path": "README.md", "contents": "# Customer insights\n\nFilters apply to the whole page.\n"},
+    ]
+    proposal["app"] = {**proposal["app"], "name": "customer-insights", "path": "apps/customer-insights"}
+    return proposal
+
+
+def filter_check(source: str) -> list[str]:
+    from agent_application.evals import filter_defects
+
+    return filter_defects(generate(filtered_proposal(source)))
+
+
+def test_generated_dashboard_applies_every_sidebar_filter_in_sql() -> None:
+    assert filter_check(FILTERED_SQL_APP.replace("{BY_COUNTRY_WHERE}", "{where}")) == []
+
+
+def test_generated_dashboard_applies_every_sidebar_filter_to_one_frame() -> None:
+    assert filter_check(FILTERED_FRAME_APP.replace("CHART_FRAME", "filtered")) == []
+
+
+def test_a_chart_that_ignores_the_sidebar_filters_is_reported() -> None:
+    """The query behind one chart is built without the filters: every filter leaves that chart as it was."""
+    problems = filter_check(FILTERED_SQL_APP.replace("{BY_COUNTRY_WHERE}", ""))
+
+    assert len(problems) == 3
+    for label in ("'Country'", "'Segment'", "'Signup date range'"):
+        assert any(label in problem and "plotly chart 2" in problem for problem in problems)
+    assert all("plotly chart 1" not in problem and "data frame" not in problem for problem in problems)
+
+
+def test_a_chart_drawn_from_the_unfiltered_frame_is_reported() -> None:
+    """agent-application#64's shape: filters applied to one frame, a chart drawn from the frame read before them."""
+    problems = filter_check(FILTERED_FRAME_APP.replace("CHART_FRAME", "customers"))
+
+    assert problems
+    assert all("plotly chart 2" in problem for problem in problems)
+
+
+def test_a_filter_written_with_in_fails_as_it_does_on_lake() -> None:
+    """The workspace's SQL has no IN; an App that filters with it shows an error once a country is chosen."""
+    source = FILTERED_SQL_APP.replace("{BY_COUNTRY_WHERE}", "{where}").replace(
+        '"(" + " OR ".join("country = " + quoted(c) for c in chosen) + ")"',
+        '"country IN (" + ", ".join(quoted(c) for c in chosen) + ")"',
+    )
+
+    problems = filter_check(source)
+
+    assert any("'Country'" in problem and "IN" in problem for problem in problems)
+
+
+def test_a_sidebar_widget_whose_value_is_never_used_fails_validation() -> None:
+    """A filter read and never applied is refused before anyone sees the App, and the model is told why."""
+    from agent_application.agent import proposal_defects
+
+    source = FILTERED_SQL_APP.replace("{BY_COUNTRY_WHERE}", "{where}").replace(
+        'segment = st.selectbox("Segment"', 'unused_segment = st.selectbox("Segment"'
+    )
+
+    problems = proposal_defects(filtered_proposal(source), "build it")
+
+    assert any("'Segment' selectbox (`unused_segment`) is never used" in problem for problem in problems)
