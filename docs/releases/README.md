@@ -10,6 +10,7 @@ tag and deployed; it is never produced by a second build.
 
 | Release | Date | Summary |
 |---|---|---|
+| [v0.2.7](v0.2.7.md) | 2026-10-27 | A patch: files read exactly; filters applied everywhere |
 | [v0.2.6](v0.2.6.md) | 2026-10-26 | A patch: repository paths are written without '.' components, so a confirmed App at path '.' commits |
 | [v0.2.5](v0.2.5.md) | 2026-10-26 | A patch: repository paths are written without '.' components, so a confirmed App at path '.' commits |
 | [v0.2.4](v0.2.4.md) | 2026-10-26 | A patch: a conversation is seeded from Lake's history after a restart (#55) |
