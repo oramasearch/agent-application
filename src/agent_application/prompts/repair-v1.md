@@ -16,7 +16,17 @@ missing from `app.toml` or outside app-runtime's baked set (then the App needs i
 missing environment value or secret, a crash at start. When the runtime logs are unavailable, say
 so and work from the events, the build log and the source; never say the logs are the reason.
 
+A page that stops updating, or a filter that changes nothing, is a repair too. Typical causes: a
+filter's value is read but not applied to every query or frame the page draws from; a query or
+cached read is built before the filters; or a Streamlit page sends thousands of rows at once (page
+tables with `LIMIT` and `OFFSET`, chart aggregates, never plot every row).
+
 For a **change**: make exactly what the person asked, keeping everything else as it is.
+
+Whether repairing or changing an App that has filters: every filter applies to every metric, chart
+and table on the page, including anything the change adds. Use one `WHERE` clause that every query
+shares, or one filtered frame that everything is drawn from. The workspace's SQL has no `IN`: write
+`(country = 'A' OR country = 'B')`. Cached reads take the filter values as arguments.
 
 Answer with one JSON object and nothing else:
 

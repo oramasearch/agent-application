@@ -21,6 +21,7 @@ from typing import Any
 
 from openai import OpenAI
 
+from agent_application.app_filters import unused_widgets
 from agent_application.agent import (
     BAKED_DEPENDENCIES,
     MAX_FILES,
@@ -391,6 +392,7 @@ def file_change_defects(
             else:
                 problems.extend(orama_app_misuse(path, tree))
                 problems.extend(unbounded_selects(path, tree))
+                problems.extend(unused_widgets(path, tree))
         if path == "app.toml":
             problems.extend(manifest_change_defects(contents, current.get("app.toml")))
     for path in deleted:

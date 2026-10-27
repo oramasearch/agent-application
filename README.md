@@ -73,5 +73,12 @@ which lake grants only when the person opted in and attempts remain, applies its
 ## Verification and evals
 
 `uv run pytest` covers the service, bus, proposal rules, confirmation gate, deployment calls, and
-generated Apps loaded by the pinned app-runtime revision. `uv run application-agent-evals` runs the
-dashboard, Postgres CRUD, and static-site live model cases against deterministic fake lake facts.
+generated Apps loaded by the pinned app-runtime revision, and whether a generated Streamlit App's sidebar
+filters reach every metric, chart and table (agent-application#64): the App runs under Streamlit's
+`AppTest` over a SQLite copy of its dataset and each filter is chosen in turn
+(`agent_application.app_filters`). Every proposal is also refused when a widget's value is assigned and
+never used. The generation and change prompts require every filter to apply to the whole page, `OR`
+instead of `IN` (the workspace's SQL has none), filter values as arguments of cached reads, and small
+pages (tables of at most 1,000 rows, charts of aggregates). `uv run application-agent-evals` runs the
+dashboard, Postgres CRUD, static-site and filtered-dashboard live model cases against deterministic
+fake lake facts.
