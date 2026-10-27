@@ -4,7 +4,7 @@ The ApplicationAgent: builds web apps and data apps from a description, commits 
 
 Private. Its image is published **private** as `oramasearch/agent-application` on Docker Hub.
 
-Current release: [v0.2.4](docs/releases/v0.2.4.md) ([all releases](docs/releases/README.md)).
+Current release: [v0.2.5](docs/releases/v0.2.5.md) ([all releases](docs/releases/README.md)).
 
 ## Service
 
