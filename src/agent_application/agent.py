@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import base64
 import json
+import posixpath
 import re
 import time
 import tomllib
@@ -398,6 +399,13 @@ def unbounded_selects(path: str, tree: ast.AST) -> list[str]:
 def safe_path(path: str) -> bool:
     candidate = PurePosixPath(path)
     return bool(path) and not candidate.is_absolute() and ".." not in candidate.parts
+
+
+def repository_path(root: str, path: str) -> str:
+    """`path` under the App's `root`, as Lake stores it: no `.` or empty components, no leading or
+    trailing slash. Lake refuses `./main.py` or `./main.py` under root `.` (invalid repository path)."""
+    joined = posixpath.normpath(posixpath.join(root.strip().strip("/") or ".", path.strip()))
+    return "" if joined == "." else joined.strip("/")
 
 
 def app_defects(
@@ -901,10 +909,10 @@ def commit_files(
     files: list[dict[str, Any]],
     lake: Lake,
 ) -> str:
-    root = str(app.get("path") or "").strip("/")
+    root = str(app.get("path") or "")
     operations = []
     for item in files:
-        path = f"{root}/{item['path']}" if root else item["path"]
+        path = repository_path(root, item["path"])
         content = base64.b64encode(item["contents"].encode()).decode()
         operations.append({"type": "file", "path": path, "content": content})
     committed = lake.write(
