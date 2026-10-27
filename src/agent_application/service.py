@@ -112,6 +112,9 @@ def run_turn(
     from agent_application.agent import Turn, answer_turn
 
     conversation_id = str(body.get("conversation_id") or uuid.uuid4())
+    history = state.history(conversation_id)
+    if not history:
+        history.extend(seeded_history(body.get("history")))
     turn = Turn(
         message=message,
         lake_url=lake_url,
@@ -125,7 +128,7 @@ def run_turn(
     # turn's workspace (lake#248); this agent holds no provider key.
     answer = answer_turn(
         turn,
-        state.history(conversation_id),
+        history,
         client or gateway_client(lake_url, token),
         state.model,
         lake,
@@ -140,6 +143,33 @@ def run_turn(
         "trace_id": trace_id,
         **answer,
     }
+
+
+def seeded_history(items: Any) -> list[dict[str, Any]]:
+    """The conversation's earlier turns as Lake sends them (lake#1247), as chat messages.
+
+    This service keeps history in process memory, so a restart or another replica starts empty. Lake sends up to 20
+    earlier turns of an App's change or repair conversation (message, reply, outcome, diff, confirmed), and they seed it.
+    """
+    messages: list[dict[str, Any]] = []
+    if not isinstance(items, list):
+        return messages
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        message = str(item.get("message") or "").strip()
+        if message:
+            messages.append({"role": "user", "content": message})
+        reply = str(item.get("reply") or "").strip()
+        diff = str(item.get("diff") or "").strip()
+        parts = [reply] if reply else []
+        if diff:
+            parts.append("Proposed diff:\n" + diff)
+        if item.get("confirmed"):
+            parts.append("The person confirmed this proposal; it was committed and deployed.")
+        if parts:
+            messages.append({"role": "assistant", "content": "\n\n".join(parts)})
+    return messages
 
 
 def turn_refusal(authorization: str | None, token: str) -> tuple[int, str] | None:
