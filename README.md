@@ -16,6 +16,12 @@ follow-up turn. A confirmed proposal that needs packages outside app-runtime's b
 stored as a source-backed runtime App, built by lake, and deployed from the resulting immutable
 image reference.
 
+A task is claimed only when a worker is free to run it at once (agent-application#33, LSR-075): while every
+worker is busy nothing is received, and a task this replica cannot run stays unclaimed on the bus.
+`AGENT_BUS_WORKERS` (default 4) run at once; one customer holds at most `AGENT_BUS_TENANT_WORKERS`
+(default one fewer), and a freed worker goes to the waiting customer holding the fewest. At most 256
+dispatch rows wait, never a claimed body. `tests/test_bus_backpressure.py` covers it.
+
 **The model is reached through lake** (lake#248, lake `docs/api/model-gateway.md`): every call goes
 to `<LAKE_URL>/openai/v1` with the turn's own `lake_token` as the API key (`model.py`), so lake
 counts its tokens in the turn's workspace and enforces the account's model-token limit. The service
