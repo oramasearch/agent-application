@@ -16,6 +16,7 @@ from urllib.parse import urlsplit
 
 from openai import OpenAI
 
+from agent_application.conversations import Conversations
 from agent_application import lake_bus
 from agent_application.model import gateway_client
 
@@ -81,11 +82,33 @@ class State:
         self.token = os.environ.get("AGENT_SERVICE_TOKEN", "")
         self.lake_url = os.environ.get("LAKE_URL", "")
         self.lock = threading.Lock()
-        self.conversations: dict[str, list[dict[str, Any]]] = {}
+        # Bounded by count, turns, bytes and idle time: one shared pod serves every tenant
+        # (agent-application#34, LSR-076).
+        self.conversations = Conversations.from_env()
 
-    def history(self, conversation_id: str) -> list[dict[str, Any]]:
+    def history(self, key: tuple[str, ...]) -> list[dict[str, Any]]:
         with self.lock:
-            return self.conversations.setdefault(conversation_id, [])
+            history = self.conversations.get(key)
+            if history is None:
+                history = []
+                self.conversations[key] = history
+            return history
+
+
+def conversation_key(body: dict[str, Any], conversation_id: str) -> tuple[str, ...]:
+    """Where a turn's conversation is kept (agent-application#34, LSR-008).
+
+    A bus turn's conversation belongs to the account and workspace Lake's claim reply names
+    (`lake_bus.turn_body`), never to the ids the body carries, so one tenant cannot continue
+    another's conversation by naming its id. A direct `/v1/turn` turn has no claim; it is kept apart
+    from every bus turn, under the conversation id it names.
+    """
+    claim = body.get("claim")
+    if isinstance(claim, dict):
+        account, workspace = claim.get("customer_id"), claim.get("workspace_id")
+        if all(isinstance(part, str) and part for part in (account, workspace)):
+            return ("bus", account, workspace, conversation_id)
+    return ("direct", conversation_id)
 
 
 def run_turn(
@@ -114,9 +137,10 @@ def run_turn(
     from agent_application.agent import Turn, answer_turn
 
     conversation_id = str(body.get("conversation_id") or uuid.uuid4())
-    history = state.history(conversation_id)
+    history = state.history(conversation_key(body, conversation_id))
     if not history:
         history.extend(seeded_history(body.get("history")))
+    kept = len(history)
     turn = Turn(
         message=message,
         lake_url=lake_url,
@@ -128,13 +152,18 @@ def run_turn(
     )
     # The model is reached through lake with the turn's own key, which counts its tokens in the
     # turn's workspace (lake#248); this agent holds no provider key.
-    answer = answer_turn(
-        turn,
-        history,
-        client or gateway_client(lake_url, token),
-        state.model,
-        lake,
-    )
+    try:
+        answer = answer_turn(
+            turn,
+            history,
+            client or gateway_client(lake_url, token),
+            state.model,
+            lake,
+        )
+    except Exception:
+        # A turn that fails leaves nothing of itself in the conversation (LSR-076).
+        del history[kept:]
+        raise
     # The trace id names the turn; lake stores it with the answer in the turn's workspace Zetta.
     # Nothing is written to the pod's disk: the pod serves every tenant, and the message and the
     # answer (with the generated App source) are workspace content (agent-application#21).
