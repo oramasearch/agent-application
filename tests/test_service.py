@@ -79,8 +79,8 @@ def test_turn_calls_its_model_through_lakes_gateway_with_the_turns_key(tmp_path,
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.setitem(__import__("sys").modules, "agent_application.agent",
                         SimpleNamespace(Turn=lambda **values: values, answer_turn=answer_turn))
-    monkeypatch.setattr(service, "gateway_client", lambda url, token: model.gateway_client(
-        url, token, http_client=httpx.Client(transport=httpx.MockTransport(gateway))))
+    monkeypatch.setattr(service, "gateway_client", lambda url, token, **kw: model.gateway_client(
+        url, token, http_client=httpx.Client(transport=httpx.MockTransport(gateway)), **kw))
     state = State()
     answer = run_turn({"message": "build a dashboard", "lake_token": "lat.task.secret",
                        "lake_url": "http://lake:8080"}, state)

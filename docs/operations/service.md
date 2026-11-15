@@ -10,8 +10,18 @@ credential only for the duration of the turn.
 The lake agent bus is enabled when `LAKE_URL` and `AGENT_BUS_TOKEN` are set; `AGENT_BUS_AGENT`
 names the agent and defaults to `agent-application`.
 The worker long-polls `receive_agent_tasks`, claims each task once, and publishes progress followed
-by a result or failure. The bus credential is used only for those three bus capabilities. The
-person's delegated credential remains inside the claimed task body.
+by a result or failure. Those three bus calls carry the bus credential alone.
+
+**No task credential reaches this process** (lake#871, lake `docs/api/agent-bus.md`). Each claim
+asks for `credentials: by_reference`: Lake keeps the task's credential and answers the body without
+it (`lake_bus.task_credentials`). Every call the turn makes to Lake (its capability reads and writes,
+and its model calls through the gateway) then carries this agent's bus credential and the header
+`X-Lake-Agent-Task: <task id>`, which Lake honours only while that task is claimed and `Running` on
+this agent. The bus calls themselves never send the header. The proposal and change checks that
+refuse an answer containing the turn's `lake_token` now refuse one containing the bus credential. A
+Lake from before lake#871 refuses the `credentials` field before claiming anything; the claim is then
+asked again without it, and the body's own `lake_token` is used as before, with no task header. Lake
+removes the in-body mode once every library agent claims by reference.
 
 The model is `APPLICATION_AGENT_MODEL` when it is set, else `AGENT_MODEL`, else `gpt-6.1-sol`. The Orama
 operator sets `AGENT_MODEL` on every library agent pod from the Lake's `spec.agents.model`, so the

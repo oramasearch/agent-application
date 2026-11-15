@@ -115,6 +115,7 @@ def run_turn(
     history = state.history(conversation_id)
     if not history:
         history.extend(seeded_history(body.get("history")))
+    headers = lake_bus.task_headers(body)
     turn = Turn(
         message=message,
         lake_url=lake_url,
@@ -123,13 +124,14 @@ def run_turn(
         conversation_id=conversation_id,
         context=body.get("context") if isinstance(body.get("context"), dict) else {},
         kind=str(body.get("kind") or "app"),
+        lake_headers=headers,
     )
     # The model is reached through lake with the turn's own key, which counts its tokens in the
     # turn's workspace (lake#248); this agent holds no provider key.
     answer = answer_turn(
         turn,
         history,
-        client or gateway_client(lake_url, token),
+        client or gateway_client(lake_url, token, headers=headers),
         state.model,
         lake,
     )
