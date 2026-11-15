@@ -1,8 +1,8 @@
 # agent-application
 
-The ApplicationAgent: builds web apps and data apps from a description, commits them to a lake repository, and deploys them as lake Apps after the person confirms. Built on agent-runtime. Epic: oramasearch/lake#297.
+The ApplicationAgent: builds web apps and data apps from a description, commits them to a lake repository, and deploys them as lake Apps after the person confirms. Built on agent-runtime.
 
-Private. Its image is published **private** as `oramasearch/agent-application` on Docker Hub.
+Its image is published as `oramasearch/agent-application` on Docker Hub.
 
 The Dockerfile pins its bases by multi-platform index digest (lake#1003): `python:3.12-slim@sha256:5e2bdb1b…` for both stages and `ghcr.io/astral-sh/uv:0.11.7@sha256:240fb85a…`. Moving one is a reviewed change of its digest.
 
@@ -36,7 +36,7 @@ counts its tokens in the turn's workspace and enforces the account's model-token
 holds no `OPENAI_API_KEY`; only the offline evals, which run for no workspace, call OpenAI directly. The model name is `APPLICATION_AGENT_MODEL`, else the Lake's `AGENT_MODEL` (set
 by the operator from `spec.agents.model`), else `gpt-6.1-sol` (`docs/operations/service.md`).
 
-**A turn's credential goes only to Lake at this service's own `LAKE_URL`** (#30). Lake capabilities
+**A turn's credential goes only to Lake at this service's own `LAKE_URL`**. Lake capabilities
 and the model gateway are always reached at `LAKE_URL`; a turn's `lake_url` is ignored, so the
 bearer is never sent to a host the caller names. With `LAKE_URL` unset, or not an absolute
 http(s) URL without user info, query or fragment, every turn is refused before a request is made.
@@ -58,7 +58,7 @@ writes. A follow-up turn must carry the reviewed object in `context.confirmed_pr
 does the agent commit the files, create or update the App, deploy it, and follow its rollout.
 The follow waits up to three minutes for Ready: a starting pod's Degraded or failed probe is not
 judged, only a state that is still there at the deadline (re-read with `get_app`). When the App
-logs are unavailable the reply says so and never gives that as the reason it failed (#16).
+logs are unavailable the reply says so and never gives that as the reason it failed.
 Retries reuse a repository or App with the proposal's exact name in the same customer, so a
 failure after either row is created can resume from the reviewed proposal.
 Every customer-owned read (repositories, datasets, services, App state, and image-build state)
@@ -77,7 +77,7 @@ phase, and deploys the built image. Baked-only Apps skip the image build.
 ## Repairing and changing an App
 
 Lake also starts `repair` turns (an App failed) and `change` turns (more instructions for an App)
-on an existing App named by `context.app_id` (lake#1207). The agent reads the App's events,
+on an existing App named by `context.app_id`. The agent reads the App's events,
 runtime logs, newest build, source and bindings, and proposes the change as a diff of the files it
 changes. Confirmed, it commits them to the App's repository in one commit (each write a drip),
 rebuilds when new packages need an image, redeploys and follows the rollout. An auto-fix turn,
@@ -88,7 +88,7 @@ which lake grants only when the person opted in and attempts remain, applies its
 
 `uv run pytest` covers the service, bus, proposal rules, confirmation gate, deployment calls, and
 generated Apps loaded by the pinned app-runtime revision, and whether a generated Streamlit App's sidebar
-filters reach every metric, chart and table (agent-application#64): the App runs under Streamlit's
+filters reach every metric, chart and table: the App runs under Streamlit's
 `AppTest` over a SQLite copy of its dataset and each filter is chosen in turn
 (`agent_application.app_filters`). Every proposal is also refused when a widget's value is assigned and
 never used. The generation and change prompts require every filter to apply to the whole page, `OR`
