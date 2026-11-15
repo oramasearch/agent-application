@@ -37,7 +37,7 @@ def test_a_turns_lake_url_is_ignored_and_lake_is_reached_at_lake_url(
 ) -> None:
     gateways: list[str] = []
     monkeypatch.setattr(service, "gateway_client",
-                        lambda url, token: gateways.append(url) or SimpleNamespace())
+                        lambda url, token, **kw: gateways.append(url) or SimpleNamespace())
     monkeypatch.setenv("LAKE_URL", "http://lake-prod.lake.svc.cluster.local:80/")
     answer = run_turn({"message": "build", "lake_token": "lat.task.secret",
                        "lake_url": "http://attacker.example"}, _state(tmp_path))
@@ -65,8 +65,8 @@ def test_the_model_is_called_at_lake_url_not_the_turns_lake_url(tmp_path, monkey
 
     monkeypatch.setitem(sys.modules, "agent_application.agent",
                         SimpleNamespace(Turn=lambda **values: values, answer_turn=answer_turn))
-    monkeypatch.setattr(service, "gateway_client", lambda url, token: model.gateway_client(
-        url, token, http_client=httpx.Client(transport=httpx.MockTransport(gateway))))
+    monkeypatch.setattr(service, "gateway_client", lambda url, token, **kw: model.gateway_client(
+        url, token, http_client=httpx.Client(transport=httpx.MockTransport(gateway)), **kw))
     monkeypatch.setenv("LAKE_URL", "http://lake:8080")
     answer = run_turn({"message": "build", "lake_token": "lat.task.secret",
                        "lake_url": "http://elsewhere:9"}, _state(tmp_path))
@@ -88,7 +88,7 @@ def test_without_a_valid_lake_url_no_turn_sends_its_credential(
     tmp_path, monkeypatch, turns, configured
 ) -> None:
     monkeypatch.setattr(service, "gateway_client",
-                        lambda url, token: pytest.fail(f"model called at {url}"))
+                        lambda url, token, **kw: pytest.fail(f"model called at {url}"))
     if configured is None:
         monkeypatch.delenv("LAKE_URL", raising=False)
     else:

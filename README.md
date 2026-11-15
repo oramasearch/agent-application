@@ -11,7 +11,10 @@ Current release: [v0.2.7](docs/releases/v0.2.7.md) ([all releases](docs/releases
 The Python service exposes `POST /v1/turn` and `GET /healthz` (which reports the `version`) on port
 8080. `POST /v1/turn` requires `Authorization: Bearer <AGENT_SERVICE_TOKEN>`, compared in constant time (`401` otherwise), and fails closed: with `AGENT_SERVICE_TOKEN` unset or empty it refuses every turn with `503`. The operator always sets it; set it yourself for a hand-run service. Turns from lake's bus do not use it. It can also receive `agent_turn` tasks (lake gives them kind `app`) from lake's agent bus when
 `LAKE_URL` and `AGENT_BUS_TOKEN` are set; `AGENT_BUS_AGENT` names the agent and defaults to
-`agent-application`. Every app deployment remains subject to an explicit confirmation carried on a
+`agent-application`. Bus tasks are claimed by reference (lake#871): no task credential reaches the
+process, and every call made for a task carries the bus credential and `X-Lake-Agent-Task: <task
+id>`, falling back to the body's credential on a Lake that refuses it
+([service and bus operation](docs/operations/service.md)). Every app deployment remains subject to an explicit confirmation carried on a
 follow-up turn. A confirmed proposal that needs packages outside app-runtime's baked set is first
 stored as a source-backed runtime App, built by lake, and deployed from the resulting immutable
 image reference.
@@ -72,7 +75,7 @@ which lake grants only when the person opted in and attempts remain, applies its
 
 ## Verification and evals
 
-`uv run pytest` covers the service, bus, proposal rules, confirmation gate, deployment calls, and
+`uv run pytest` covers the service, bus (with claims by reference, `tests/test_by_reference.py`), proposal rules, confirmation gate, deployment calls, and
 generated Apps loaded by the pinned app-runtime revision, and whether a generated Streamlit App's sidebar
 filters reach every metric, chart and table (agent-application#64): the App runs under Streamlit's
 `AppTest` over a SQLite copy of its dataset and each filter is chosen in turn
