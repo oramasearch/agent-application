@@ -82,3 +82,9 @@ instead of `IN` (the workspace's SQL has none), filter values as arguments of ca
 pages (tables of at most 1,000 rows, charts of aggregates). `uv run application-agent-evals` runs the
 dashboard, Postgres CRUD, static-site and filtered-dashboard live model cases against deterministic
 fake lake facts.
+
+## License
+
+MIT, see [LICENSE](LICENSE). Third-party components and their licenses are in
+[THIRD_PARTY_LICENSES](THIRD_PARTY_LICENSES). Contributions are welcome under the Developer
+Certificate of Origin; see [CONTRIBUTING.md](CONTRIBUTING.md).

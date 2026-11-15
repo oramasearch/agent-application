@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+
 """HTTP and bus surfaces for ApplicationAgent."""
 
 from __future__ import annotations

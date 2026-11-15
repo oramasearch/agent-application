@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+
 """Design, validate, commit, and deploy lake Apps after confirmation."""
 
 from __future__ import annotations
