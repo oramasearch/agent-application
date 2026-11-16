@@ -1,7 +1,7 @@
 # Repairing and changing an App
 
 Lake starts two more kinds of ApplicationAgent turn on an App that already exists
-([lake#1207](https://github.com/oramasearch/lake/issues/1207), lake `docs/api/notifications.md`):
+(lake#1207, lake `docs/api/notifications.md`):
 
 - **`repair`**: the App failed. Its rollout ended Degraded, failed or crash-looping, or its image
   build failed. The person pressed *Fix with the Application Agent*, or auto-fix started it.
@@ -18,7 +18,7 @@ prompt is `prompts/repair-v1.md`.
 With the turn's read-only credential, scoped to the person's own permissions:
 
 - the App's lifecycle events (`receive_app_events` from the first retained one);
-- its runtime logs (`app_logs`). When lake cannot answer them (lake#1206), the agent says so in
+- its runtime logs (`app_logs`). When lake cannot answer them, the agent says so in
   what it sends the model and works from the events, the build log and the source. It never gives
   missing logs as the reason the App failed;
 - its newest image build and the build log (`list_builds`, `build_logs`);

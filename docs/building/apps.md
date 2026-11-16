@@ -55,7 +55,7 @@ reads on the bare function, with the line and the right form: such code compiles
 
 Generated Apps read only what the page shows: SQL aggregates (`GROUP BY`, `COUNT`, `SUM`, `AVG`, `MIN`, `MAX`)
 and row-level reads paged with `LIMIT`/`OFFSET`. Validation and repair flag a literal `sql(...)` statement that reads
-rows with neither a `LIMIT` nor an aggregate (#51): it copies a whole table into the App, and Lake refuses an App query
+rows with neither a `LIMIT` nor an aggregate: it copies a whole table into the App, and Lake refuses an App query
 past 5,000 rows (`too_many_rows`). The workspace's SQL has no joins, so combined data comes from a table a pipeline
 writes.
 

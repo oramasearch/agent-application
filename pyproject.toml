@@ -1,7 +1,8 @@
 [project]
 name = "agent-application"
-version = "0.2.7"
+version = "0.3.0"
 description = "Builds and deploys lake Apps after explicit confirmation"
+license = "MIT"
 readme = "README.md"
 requires-python = ">=3.12,<3.15"
 dependencies = [

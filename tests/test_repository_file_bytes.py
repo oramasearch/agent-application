@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+
 import base64
 
 from agent_application.agent import exact_file_text
