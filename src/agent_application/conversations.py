@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+
 """The service's conversation memory, bounded (agent-application#34, LSR-076; ported from agent-ask-orama#44).
 
 The Application agent is one shared service for every tenant on a lake. It kept its
