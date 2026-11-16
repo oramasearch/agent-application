@@ -4,6 +4,8 @@ The ApplicationAgent: builds web apps and data apps from a description, commits 
 
 Private. Its image is published **private** as `oramasearch/agent-application` on Docker Hub.
 
+The Dockerfile pins its bases by multi-platform index digest (lake#1003): `python:3.12-slim@sha256:5e2bdb1b…` for both stages and `ghcr.io/astral-sh/uv:0.11.7@sha256:240fb85a…`. Moving one is a reviewed change of its digest.
+
 Current release: [v0.2.7](docs/releases/v0.2.7.md) ([all releases](docs/releases/README.md)).
 
 ## Service
