@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+
 """Repair and change turns on an existing App (lake#1207)."""
 
 from __future__ import annotations

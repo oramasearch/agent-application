@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+
 """Lake refuses a repository path with a `.` component (invalid repository path), which failed T11
 when an App was proposed at path `.`; the agent writes paths the way Lake stores them."""
 from agent_application.agent import repository_path

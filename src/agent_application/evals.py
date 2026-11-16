@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+
 """Live model evaluations for the ApplicationAgent scenarios.
 
 The `filtered-dashboard` case also runs the proposed Streamlit App against a SQLite copy of its dataset and chooses

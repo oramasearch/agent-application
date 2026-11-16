@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+
 """Do a generated App's filters reach its page? (agent-application#64)
 
 Two checks:

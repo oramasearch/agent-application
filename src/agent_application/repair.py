@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+
 """Repair a failed App, or change an App from instructions (lake#1207).
 
 A `repair` or `change` turn names one existing App (`context.app_id`). The agent reads what the App
