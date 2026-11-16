@@ -2,17 +2,17 @@
   "spdxVersion": "SPDX-2.3",
   "dataLicense": "CC0-1.0",
   "SPDXID": "SPDXRef-DOCUMENT",
-  "name": "agent-application-v0.3.0",
-  "documentNamespace": "https://github.com/oramasearch/agent-application/sbom/7a3a41609ed5571a7fbf998d3054fd40951ac474",
+  "name": "agent-application-47925cab5c73",
+  "documentNamespace": "https://github.com/oramasearch/agent-application/sbom/47925cab5c73a5f69b60bc5889e3f5c264fa92b8",
   "creationInfo": {
-    "created": "2026-11-16T07:24:34Z",
+    "created": "2026-11-16T07:50:35Z",
     "creators": [
       "Organization: OramaSearch, Inc.",
       "Tool: tools/sbom.py",
       "Tool: syft"
     ],
     "licenseListVersion": "3.29",
-    "comment": "Made from source commit 7a3a41609ed5571a7fbf998d3054fd40951ac474 by tools/sbom.py."
+    "comment": "Made from source commit 47925cab5c73a5f69b60bc5889e3f5c264fa92b8 by tools/sbom.py."
   },
   "documentDescribes": [
     "SPDXRef-DocumentRoot"
@@ -200,7 +200,7 @@
     {
       "name": "agent-application",
       "SPDXID": "SPDXRef-DocumentRoot",
-      "versionInfo": "v0.3.0",
+      "versionInfo": "47925cab5c73",
       "downloadLocation": "git+https://github.com/oramasearch/agent-application.git",
       "homepage": "https://github.com/oramasearch/agent-application",
       "filesAnalyzed": false,
@@ -4071,26 +4071,6 @@
     },
     {
       "name": "python",
-      "SPDXID": "SPDXRef-Image-python-3e064d07035dff47",
-      "versionInfo": "3.12-slim",
-      "downloadLocation": "NOASSERTION",
-      "filesAnalyzed": false,
-      "supplier": "NOASSERTION",
-      "copyrightText": "NOASSERTION",
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "primaryPackagePurpose": "CONTAINER",
-      "comment": "Container base image (python:3.12-slim), FROM in Dockerfile. Its own packages are in the image SBOM of each release image.",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceType": "purl",
-          "referenceLocator": "pkg:docker/python@3.12-slim"
-        }
-      ]
-    },
-    {
-      "name": "python",
       "SPDXID": "SPDXRef-Image-python-bbeb47b8d77ac77d",
       "versionInfo": "3.12-slim@sha256:5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b",
       "downloadLocation": "NOASSERTION",
@@ -6140,11 +6120,6 @@
       "relatedSpdxElement": "SPDXRef-DocumentRoot",
       "relationshipType": "DESCRIBES",
       "spdxElementId": "SPDXRef-DOCUMENT"
-    },
-    {
-      "relatedSpdxElement": "SPDXRef-Image-python-3e064d07035dff47",
-      "relationshipType": "DEPENDS_ON",
-      "spdxElementId": "SPDXRef-DocumentRoot"
     },
     {
       "relatedSpdxElement": "SPDXRef-Image-python-bbeb47b8d77ac77d",

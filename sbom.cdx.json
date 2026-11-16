@@ -2,10 +2,10 @@
   "$schema": "http://cyclonedx.org/schema/bom-1.7.schema.json",
   "bomFormat": "CycloneDX",
   "specVersion": "1.7",
-  "serialNumber": "urn:uuid:fbb79a52-6c8b-5085-8608-35193c89c3fc",
+  "serialNumber": "urn:uuid:1bb3b1ad-154b-5004-bccd-b7c3c2e2d698",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-11-16T07:24:34Z",
+    "timestamp": "2026-11-16T07:50:35Z",
     "tools": {
       "components": [
         {
@@ -169,7 +169,7 @@
       "bom-ref": "DocumentRoot",
       "type": "library",
       "name": "agent-application",
-      "version": "v0.3.0",
+      "version": "47925cab5c73",
       "licenses": [
         {
           "license": {
@@ -3213,19 +3213,6 @@
       ]
     },
     {
-      "bom-ref": "pkg:docker/python@3.12-slim?package-id=Image-python-3e064d07035dff47",
-      "type": "library",
-      "name": "python",
-      "version": "3.12-slim",
-      "purl": "pkg:docker/python@3.12-slim",
-      "properties": [
-        {
-          "name": "syft:package:type",
-          "value": "UnknownPackage"
-        }
-      ]
-    },
-    {
       "bom-ref": "pkg:docker/python@sha256%3A5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b?package-id=Image-python-bbeb47b8d77ac77d&tag=3.12-slim",
       "type": "library",
       "name": "python",
@@ -4833,7 +4820,6 @@
     {
       "ref": "DocumentRoot",
       "dependsOn": [
-        "pkg:docker/python@3.12-slim?package-id=Image-python-3e064d07035dff47",
         "pkg:docker/python@sha256%3A5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b?package-id=Image-python-bbeb47b8d77ac77d&tag=3.12-slim"
       ]
     },
