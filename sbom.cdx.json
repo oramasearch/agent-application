@@ -2,10 +2,10 @@
   "$schema": "http://cyclonedx.org/schema/bom-1.7.schema.json",
   "bomFormat": "CycloneDX",
   "specVersion": "1.7",
-  "serialNumber": "urn:uuid:f25a8f4e-0b3c-53df-bfec-d27b9893a27f",
+  "serialNumber": "urn:uuid:fbb79a52-6c8b-5085-8608-35193c89c3fc",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-11-16T06:24:18Z",
+    "timestamp": "2026-11-16T07:24:34Z",
     "tools": {
       "components": [
         {
@@ -24,12 +24,12 @@
   },
   "components": [
     {
-      "bom-ref": "pkg:pypi/agent-application@0.2.7?package-id=Package-python-agent-application-d8bb23c7c39bd022",
+      "bom-ref": "pkg:pypi/agent-application@0.3.0?package-id=Package-python-agent-application-abe36e9321833459",
       "type": "library",
       "name": "agent-application",
-      "version": "0.2.7",
-      "cpe": "cpe:2.3:a:python-agent-application:python-agent-application:0.2.7:*:*:*:*:*:*:*",
-      "purl": "pkg:pypi/agent-application@0.2.7",
+      "version": "0.3.0",
+      "cpe": "cpe:2.3:a:python-agent-application:python-agent-application:0.3.0:*:*:*:*:*:*:*",
+      "purl": "pkg:pypi/agent-application@0.3.0",
       "properties": [
         {
           "name": "syft:package:language",
@@ -41,127 +41,127 @@
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-agent-application:python_agent_application:0.2.7:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-agent-application:python_agent_application:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_agent_application:python-agent-application:0.2.7:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_agent_application:python-agent-application:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_agent_application:python_agent_application:0.2.7:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_agent_application:python_agent_application:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:agent-application:python-agent-application:0.2.7:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:agent-application:python-agent-application:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:agent-application:python_agent_application:0.2.7:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:agent-application:python_agent_application:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:agent_application:python-agent-application:0.2.7:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:agent_application:python-agent-application:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:agent_application:python_agent_application:0.2.7:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:agent_application:python_agent_application:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-agent-application:agent-application:0.2.7:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-agent-application:agent-application:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-agent-application:agent_application:0.2.7:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-agent-application:agent_application:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_agent_application:agent-application:0.2.7:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_agent_application:agent-application:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_agent_application:agent_application:0.2.7:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_agent_application:agent_application:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-agent:python-agent-application:0.2.7:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-agent:python-agent-application:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-agent:python_agent_application:0.2.7:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-agent:python_agent_application:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_agent:python-agent-application:0.2.7:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_agent:python-agent-application:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_agent:python_agent_application:0.2.7:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_agent:python_agent_application:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:agent-application:agent-application:0.2.7:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:agent-application:agent-application:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:agent-application:agent_application:0.2.7:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:agent-application:agent_application:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:agent_application:agent-application:0.2.7:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:agent_application:agent-application:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:agent_application:agent_application:0.2.7:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:agent_application:agent_application:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python-agent-application:0.2.7:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:python-agent-application:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:python_agent_application:0.2.7:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:python_agent_application:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:agent:python-agent-application:0.2.7:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:agent:python-agent-application:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:agent:python_agent_application:0.2.7:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:agent:python_agent_application:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-agent:agent-application:0.2.7:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-agent:agent-application:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python-agent:agent_application:0.2.7:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python-agent:agent_application:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_agent:agent-application:0.2.7:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_agent:agent-application:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python_agent:agent_application:0.2.7:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python_agent:agent_application:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:agent-application:0.2.7:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:agent-application:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:python:agent_application:0.2.7:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:python:agent_application:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:agent:agent-application:0.2.7:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:agent:agent-application:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "name": "syft:cpe23",
-          "value": "cpe:2.3:a:agent:agent_application:0.2.7:*:*:*:*:*:*:*"
+          "value": "cpe:2.3:a:agent:agent_application:0.3.0:*:*:*:*:*:*:*"
         }
       ]
     },
@@ -169,7 +169,7 @@
       "bom-ref": "DocumentRoot",
       "type": "library",
       "name": "agent-application",
-      "version": "b28f68c62907",
+      "version": "v0.3.0",
       "licenses": [
         {
           "license": {
@@ -4838,7 +4838,7 @@
       ]
     },
     {
-      "ref": "pkg:pypi/agent-application@0.2.7?package-id=Package-python-agent-application-d8bb23c7c39bd022",
+      "ref": "pkg:pypi/agent-application@0.3.0?package-id=Package-python-agent-application-abe36e9321833459",
       "dependsOn": [
         "pkg:pypi/httpx@0.28.1?package-id=Package-python-httpx-b8665b7937415e27",
         "pkg:pypi/openai@3.19.2?package-id=Package-python-openai-51a4dfb974c90277"
