@@ -2,17 +2,17 @@
   "spdxVersion": "SPDX-2.3",
   "dataLicense": "CC0-1.0",
   "SPDXID": "SPDXRef-DOCUMENT",
-  "name": "agent-application-v0.3.0",
-  "documentNamespace": "https://github.com/oramasearch/agent-application/sbom/7a3a41609ed5571a7fbf998d3054fd40951ac474",
+  "name": "agent-application-v0.3.1",
+  "documentNamespace": "https://github.com/oramasearch/agent-application/sbom/8ffd42111ccea89c28bbef8525ef8d0b56039ed5",
   "creationInfo": {
-    "created": "2026-11-16T07:24:34Z",
+    "created": "2026-11-16T08:30:13Z",
     "creators": [
       "Organization: OramaSearch, Inc.",
       "Tool: tools/sbom.py",
       "Tool: syft"
     ],
     "licenseListVersion": "3.29",
-    "comment": "Made from source commit 7a3a41609ed5571a7fbf998d3054fd40951ac474 by tools/sbom.py."
+    "comment": "Made from source commit 8ffd42111ccea89c28bbef8525ef8d0b56039ed5 by tools/sbom.py."
   },
   "documentDescribes": [
     "SPDXRef-DocumentRoot"
@@ -20,8 +20,8 @@
   "packages": [
     {
       "name": "agent-application",
-      "SPDXID": "SPDXRef-Package-python-agent-application-abe36e9321833459",
-      "versionInfo": "0.3.0",
+      "SPDXID": "SPDXRef-Package-python-agent-application-2424cc550c81d0e5",
+      "versionInfo": "0.3.1",
       "supplier": "NOASSERTION",
       "downloadLocation": "NOASSERTION",
       "filesAnalyzed": false,
@@ -33,174 +33,174 @@
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python-agent-application:python-agent-application:0.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python-agent-application:python-agent-application:0.3.1:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python-agent-application:python_agent_application:0.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python-agent-application:python_agent_application:0.3.1:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python_agent_application:python-agent-application:0.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python_agent_application:python-agent-application:0.3.1:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python_agent_application:python_agent_application:0.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python_agent_application:python_agent_application:0.3.1:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:agent-application:python-agent-application:0.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:agent-application:python-agent-application:0.3.1:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:agent-application:python_agent_application:0.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:agent-application:python_agent_application:0.3.1:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:agent_application:python-agent-application:0.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:agent_application:python-agent-application:0.3.1:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:agent_application:python_agent_application:0.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:agent_application:python_agent_application:0.3.1:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python-agent-application:agent-application:0.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python-agent-application:agent-application:0.3.1:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python-agent-application:agent_application:0.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python-agent-application:agent_application:0.3.1:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python_agent_application:agent-application:0.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python_agent_application:agent-application:0.3.1:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python_agent_application:agent_application:0.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python_agent_application:agent_application:0.3.1:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python-agent:python-agent-application:0.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python-agent:python-agent-application:0.3.1:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python-agent:python_agent_application:0.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python-agent:python_agent_application:0.3.1:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python_agent:python-agent-application:0.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python_agent:python-agent-application:0.3.1:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python_agent:python_agent_application:0.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python_agent:python_agent_application:0.3.1:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:agent-application:agent-application:0.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:agent-application:agent-application:0.3.1:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:agent-application:agent_application:0.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:agent-application:agent_application:0.3.1:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:agent_application:agent-application:0.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:agent_application:agent-application:0.3.1:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:agent_application:agent_application:0.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:agent_application:agent_application:0.3.1:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python:python-agent-application:0.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python:python-agent-application:0.3.1:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python:python_agent_application:0.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python:python_agent_application:0.3.1:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:agent:python-agent-application:0.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:agent:python-agent-application:0.3.1:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:agent:python_agent_application:0.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:agent:python_agent_application:0.3.1:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python-agent:agent-application:0.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python-agent:agent-application:0.3.1:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python-agent:agent_application:0.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python-agent:agent_application:0.3.1:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python_agent:agent-application:0.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python_agent:agent-application:0.3.1:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python_agent:agent_application:0.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python_agent:agent_application:0.3.1:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python:agent-application:0.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python:agent-application:0.3.1:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python:agent_application:0.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python:agent_application:0.3.1:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:agent:agent-application:0.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:agent:agent-application:0.3.1:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:agent:agent_application:0.3.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:agent:agent_application:0.3.1:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/agent-application@0.3.0"
+          "referenceLocator": "pkg:pypi/agent-application@0.3.1"
         }
       ]
     },
     {
       "name": "agent-application",
       "SPDXID": "SPDXRef-DocumentRoot",
-      "versionInfo": "v0.3.0",
+      "versionInfo": "v0.3.1",
       "downloadLocation": "git+https://github.com/oramasearch/agent-application.git",
       "homepage": "https://github.com/oramasearch/agent-application",
       "filesAnalyzed": false,
@@ -4071,26 +4071,6 @@
     },
     {
       "name": "python",
-      "SPDXID": "SPDXRef-Image-python-3e064d07035dff47",
-      "versionInfo": "3.12-slim",
-      "downloadLocation": "NOASSERTION",
-      "filesAnalyzed": false,
-      "supplier": "NOASSERTION",
-      "copyrightText": "NOASSERTION",
-      "licenseConcluded": "NOASSERTION",
-      "licenseDeclared": "NOASSERTION",
-      "primaryPackagePurpose": "CONTAINER",
-      "comment": "Container base image (python:3.12-slim), FROM in Dockerfile. Its own packages are in the image SBOM of each release image.",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceType": "purl",
-          "referenceLocator": "pkg:docker/python@3.12-slim"
-        }
-      ]
-    },
-    {
-      "name": "python",
       "SPDXID": "SPDXRef-Image-python-bbeb47b8d77ac77d",
       "versionInfo": "3.12-slim@sha256:5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b",
       "downloadLocation": "NOASSERTION",
@@ -6142,27 +6122,22 @@
       "spdxElementId": "SPDXRef-DOCUMENT"
     },
     {
-      "relatedSpdxElement": "SPDXRef-Image-python-3e064d07035dff47",
-      "relationshipType": "DEPENDS_ON",
-      "spdxElementId": "SPDXRef-DocumentRoot"
-    },
-    {
       "relatedSpdxElement": "SPDXRef-Image-python-bbeb47b8d77ac77d",
       "relationshipType": "DEPENDS_ON",
       "spdxElementId": "SPDXRef-DocumentRoot"
     },
     {
-      "relatedSpdxElement": "SPDXRef-Package-python-agent-application-abe36e9321833459",
+      "relatedSpdxElement": "SPDXRef-Package-python-agent-application-2424cc550c81d0e5",
       "relationshipType": "CONTAINS",
       "spdxElementId": "SPDXRef-DocumentRoot"
     },
     {
-      "relatedSpdxElement": "SPDXRef-Package-python-agent-application-abe36e9321833459",
+      "relatedSpdxElement": "SPDXRef-Package-python-agent-application-2424cc550c81d0e5",
       "relationshipType": "DEPENDENCY_OF",
       "spdxElementId": "SPDXRef-Package-python-httpx-b8665b7937415e27"
     },
     {
-      "relatedSpdxElement": "SPDXRef-Package-python-agent-application-abe36e9321833459",
+      "relatedSpdxElement": "SPDXRef-Package-python-agent-application-2424cc550c81d0e5",
       "relationshipType": "DEPENDENCY_OF",
       "spdxElementId": "SPDXRef-Package-python-openai-51a4dfb974c90277"
     },
