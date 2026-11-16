@@ -23,6 +23,12 @@ worker is busy nothing is received, and a task this replica cannot run stays unc
 `AGENT_BUS_WORKERS` (default 4) run at once; one customer holds at most `AGENT_BUS_TENANT_WORKERS`
 (default one fewer), and a freed worker goes to the waiting customer holding the fewest. At most 256
 dispatch rows wait, never a claimed body. `tests/test_bus_backpressure.py` covers it.
+The service's conversation memory is bounded (agent-application#34, LSR-076; `conversations.py`, ported
+from agent-ask-orama): at most `AGENT_CONVERSATIONS` conversations (default 256), each at most
+`AGENT_CONVERSATION_TURNS` turns (20) and `AGENT_CONVERSATION_BYTES` (1 MiB), all at most
+`AGENT_CONVERSATIONS_BYTES` (64 MiB), dropped after `AGENT_CONVERSATION_IDLE_SECONDS` (3600) idle. A turn
+that fails leaves nothing behind. A bus turn's conversation belongs to the account and workspace Lake's
+claim reply names, never to ids in the body (LSR-008); a direct `/v1/turn` turn is kept apart from them.
 
 **The model is reached through lake** (lake#248, lake `docs/api/model-gateway.md`): every call goes
 to `<LAKE_URL>/openai/v1` with the turn's own `lake_token` as the API key (`model.py`), so lake
