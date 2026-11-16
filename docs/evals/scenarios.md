@@ -14,7 +14,7 @@ The cases require:
   the baked runtime is required;
 - a static internal forecast guide with no unnecessary binding;
 - a Streamlit customer-insights dashboard with sidebar filters for country, segment and a signup
-  date range, where every filter applies to every metric, chart and table (agent-application#64).
+  date range, where every filter applies to every metric, chart and table.
 
 The rule grader validates the complete proposal, framework, bindings, and scenario-specific source
 markers. It also requires the dashboard to read datasets, schema, and governed SQL, and the CRUD
