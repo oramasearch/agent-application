@@ -10,6 +10,7 @@ tag and deployed; it is never produced by a second build.
 
 | Release | Date | Summary |
 |---|---|---|
+| [v0.3.1](v0.3.1.md) | 2026-11-16 | A patch: one digest-pinned `build` stage in the Dockerfile (fixes #78); the agent is unchanged |
 | [v0.3.0](v0.3.0.md) | 2026-11-16 | The MIT licence, a security policy and the public-export preparation; the bus consumer and conversation memory bounded; the image bases pinned by digest |
 | [v0.2.7](v0.2.7.md) | 2026-10-27 | A patch: files read exactly; filters applied everywhere |
 | [v0.2.6](v0.2.6.md) | 2026-10-26 | A patch: repository paths are written without '.' components, so a confirmed App at path '.' commits |

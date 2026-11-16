@@ -1,6 +1,6 @@
 [project]
 name = "agent-application"
-version = "0.3.0"
+version = "0.3.1"
 description = "Builds and deploys lake Apps after explicit confirmation"
 license = "MIT"
 readme = "README.md"
